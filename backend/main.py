@@ -67,18 +67,26 @@ async def get_headlines():
             
     all_items.sort(key=get_timestamp, reverse=True)
     
-    # Remove duplicates
+    # Remove duplicates and filter for last 24 hours
+    current_time = time.time()
+    twenty_four_hours_ago = current_time - 24 * 3600
+
     unique_titles = set()
     unique_items = []
     for item in all_items:
         title = item.get("title", "")
-        if title not in unique_titles:
+        item_time = get_timestamp(item)
+        
+        # Keep items from last 24 hours. If timestamp is 0 (missing), we can exclude it or include it.
+        # It's safer to include if timeline parsing fell back, but since they want last 24 hours specifically, let's filter correctly.
+        # Actually let's include items within 24 hours OR strictly missing timestamps to be safe, but RSS usually has good timestamps
+        if title not in unique_titles and (item_time >= twenty_four_hours_ago or item_time == 0):
             unique_titles.add(title)
             unique_items.append(item)
             
-    # Format top 100 uniquely merged headlines
+    # Format all uniquely merged headlines
     formatted_news = []
-    for index, item in enumerate(unique_items[:100]):
+    for index, item in enumerate(unique_items):
         impact = "Watchlist"
         source_tag = item.get("_sourceTag", "Market Alert")
         

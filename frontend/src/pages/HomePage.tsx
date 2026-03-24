@@ -1,6 +1,13 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Radio, Zap, Activity, Globe, ArrowUpRight, Loader2, TrendingUp, Filter } from "lucide-react";
+import { Radio, Zap, Activity, Globe, ArrowUpRight, Loader2, TrendingUp, Filter, LogOut, Dna } from "lucide-react";
+import { signOut } from "firebase/auth";
+import { auth } from "../lib/firebase";
+import { useAuth } from "../lib/AuthContext";
+import { useReadingTracker } from "../hooks/useReadingTracker";
+import { updateGuesses, confirmProduct, markAsked, getFinancialProfile, type ProductKey } from '../services/financialProfile';
+import { getNextProductToAsk } from '../hooks/useFinancialConfirm';
+import FinancialConfirmCard from '../components/FinancialConfirmCard';
 
 interface Headline {
   id: string;
@@ -10,12 +17,60 @@ interface Headline {
   time: string;
 }
 
+// Boost headlines that match the user's confirmed/likely financial products
+const FINANCIAL_BOOST_KEYWORDS: Record<string, string[]> = {
+  homeLoan: ['home loan', 'housing loan', 'emi', 'repo rate', 'rbi', 'interest rate', 'property', 'real estate', 'mortgage'],
+  personalLoan: ['personal loan', 'credit score', 'cibil', 'unsecured loan', 'instant loan', 'digital lending', 'bnpl'],
+  stocks: ['nifty', 'sensex', 'equity', 'stock market', 'demat', 'trading', 'portfolio', 'shares', 'ipo', 'bull run', 'bear market', 'smallcap', 'midcap', 'largecap'],
+  fixedDeposit: ['fixed deposit', 'fd rate', 'bank deposit', 'term deposit', 'fd interest', 'recurring deposit', 'small savings'],
+};
+
+function boostHeadlines(headlines: Headline[]): Headline[] {
+  try {
+    const profile = getFinancialProfile();
+    const boostWeights: Record<string, number> = {
+      homeLoan: profile.homeLoan.status === 'confirmed_yes' ? 2 : profile.homeLoan.status === 'likely' ? 1 : 0,
+      personalLoan: profile.personalLoan.status === 'confirmed_yes' ? 2 : profile.personalLoan.status === 'likely' ? 1 : 0,
+      stocks: profile.stocks.status === 'confirmed_yes' ? 2 : profile.stocks.status === 'likely' ? 1 : 0,
+      fixedDeposit: profile.fixedDeposit.status === 'confirmed_yes' ? 2 : profile.fixedDeposit.status === 'likely' ? 1 : 0,
+    };
+
+    const hasAnySignal = Object.values(boostWeights).some(w => w > 0);
+    if (!hasAnySignal) return headlines;
+
+    const scored = headlines.map(h => {
+      const text = (h.title + ' ' + h.tag).toLowerCase();
+      let score = 0;
+      for (const [product, weight] of Object.entries(boostWeights)) {
+        if (weight === 0) continue;
+        const matched = FINANCIAL_BOOST_KEYWORDS[product]?.some(kw => text.includes(kw));
+        if (matched) score += weight;
+      }
+      return { h, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.map(s => s.h);
+  } catch {
+    return headlines;
+  }
+}
+
 export default function HomePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { startTracking, stopTracking } = useReadingTracker();
+
+  const handleLogout = async () => {
+    stopTracking();
+    await signOut(auth);
+    navigate("/auth");
+  };
   const [headlines, setHeadlines] = useState<Headline[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTag, setActiveTag] = useState<string>("All");
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
+  const [activeConfirmKey, setActiveConfirmKey] = useState<ProductKey | null>(null);
 
   const fallbackHeadlines = [
     { id: '1', tag: "Global Macro", title: "Rate hikes are done. The era of cheap capital returns.", impact: "Critical Impact", time: "2 mins ago" },
@@ -29,15 +84,15 @@ export default function HomePage() {
   useEffect(() => {
     const fetchNews = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/headlines");
+        const response = await fetch("http://localhost:8000/api/headlines");
         if (response.ok) {
           const data = await response.json();
-          setHeadlines(data.headlines);
+          setHeadlines(boostHeadlines(data.headlines));
         } else {
-          setHeadlines(fallbackHeadlines);
+          setHeadlines(boostHeadlines(fallbackHeadlines));
         }
       } catch (error) {
-        setHeadlines(fallbackHeadlines);
+        setHeadlines(boostHeadlines(fallbackHeadlines));
       } finally {
         setLoading(false);
       }
@@ -68,6 +123,19 @@ export default function HomePage() {
     }
   }, [activeTag, filteredHeadlines, selectedStoryId]);
 
+  // Financial Fingerprint: run guess logic once headlines are loaded
+  useEffect(() => {
+    if (headlines.length > 0) {
+      updateGuesses();
+      const next = getNextProductToAsk();
+      if (next) {
+        setActiveConfirmKey(next);
+        markAsked(next);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headlines.length]);
+
   // Layout assignment
   const selectedStory = useMemo(() => {
     return selectedStoryId ? filteredHeadlines.find(h => h.id === selectedStoryId) || filteredHeadlines[0] : filteredHeadlines[0];
@@ -80,13 +148,13 @@ export default function HomePage() {
 
   const topStory = selectedStory; // Separate feeds
   const featuredStories = useMemo(() => {
-    let stories = headlines.filter(h => h.tag === "Market" || h.tag === "World").filter(h => h.id !== topStory?.id).slice(0, 2);
+    let stories = remainingStories.filter(h => h.tag === "Market" || h.tag === "World").slice(0, 2);
     if (stories.length < 2) {
       const extra = remainingStories.filter(h => !stories.some(s => s.id === h.id)).slice(0, 2 - stories.length);
       stories = [...stories, ...extra];
     }
     return stories;
-  }, [headlines, remainingStories, topStory]);
+  }, [remainingStories]);
   const terminalFeedStories = filteredHeadlines;
   const tickerStories = headlines.slice(0, 10); // Enforce only the absolute latest news
 
@@ -109,6 +177,37 @@ export default function HomePage() {
               <div className="h-[1px] w-8 bg-white/10" />
             </div>
           </div>
+        </div>
+        {/* Profile & Logout */}
+        <div className="flex items-center gap-3">
+          {user?.photoURL ? (
+            <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full border border-white/20 object-cover" />
+          ) : (
+            <div className="w-8 h-8 rounded-full border border-[#ED1C24]/50 bg-[#ED1C24]/20 flex items-center justify-center">
+              <span className="text-sm font-black text-white">
+                {(user?.displayName || user?.email || 'O')[0].toUpperCase()}
+              </span>
+            </div>
+          )}
+          <div className="flex flex-col leading-none hidden sm:flex">
+            <span className="text-[10px] font-black uppercase tracking-widest text-white truncate max-w-[120px]">
+              {user?.displayName || user?.email?.split('@')[0] || 'Operative'}
+            </span>
+          </div>
+          <button
+            onClick={() => navigate('/dna')}
+            className="ml-2 flex items-center gap-2 px-3 py-2 border border-[#FFD700]/30 rounded-lg text-[9px] font-black uppercase tracking-widest text-[#FFD700]/60 hover:text-[#FFD700] hover:border-[#FFD700]/60 hover:bg-[#FFD700]/5 transition-all"
+          >
+            <Dna className="w-3 h-3" />
+            <span className="hidden sm:inline">DNA</span>
+          </button>
+          <button
+            onClick={handleLogout}
+            className="ml-1 flex items-center gap-2 px-3 py-2 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white hover:border-[#ED1C24]/50 hover:bg-[#ED1C24]/10 transition-all"
+          >
+            <LogOut className="w-3 h-3" />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
         </div>
       </header>
 
@@ -189,7 +288,7 @@ export default function HomePage() {
 
               {/* Featured Left Hero */}
               {topStory && (
-                <div className="flex-1 bg-[#121212] border border-white/10 rounded-xl p-8 flex flex-col relative overflow-hidden group w-full cursor-pointer shadow-[0_0_50px_rgba(0,0,0,0.5)]" onClick={() => navigate('/arena')}>
+                <div className="flex-1 bg-[#121212] border border-white/10 rounded-xl p-8 flex flex-col relative overflow-hidden group w-full cursor-pointer shadow-[0_0_50px_rgba(0,0,0,0.5)]" onClick={() => { stopTracking(); startTracking(topStory.id, topStory.title, topStory.tag); navigate('/arena'); }}>
 
                   {/* Red Tilted Squares Pattern Background */}
                   <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden rounded-xl opacity-30">
@@ -317,7 +416,7 @@ export default function HomePage() {
                   {terminalFeedStories.map((story) => (
                     <div
                       key={story.id}
-                      onClick={() => setSelectedStoryId(story.id)}
+                      onClick={() => { stopTracking(); startTracking(story.id, story.title, story.tag); setSelectedStoryId(story.id); }}
                       className="group p-4 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-colors cursor-pointer flex flex-col gap-2"
                     >
                       <div className="flex items-center justify-between opacity-60 group-hover:opacity-100 transition-opacity">
@@ -389,6 +488,18 @@ export default function HomePage() {
           background: rgba(237, 28, 36, 0.6);
         }
       `}</style>
+
+      {/* Financial Fingerprint Confirm Card — only visible on HomePage */}
+      {activeConfirmKey && (
+        <FinancialConfirmCard
+          productKey={activeConfirmKey}
+          onAnswer={(key, answer) => {
+            confirmProduct(key, answer);
+            setActiveConfirmKey(null);
+          }}
+          onSkip={() => setActiveConfirmKey(null)}
+        />
+      )}
     </div>
   );
 }
