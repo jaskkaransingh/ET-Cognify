@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Activity, Zap, TrendingUp, User, Landmark, Briefcase, TrendingDown, Users, Fingerprint, Loader2, Play, Radio, AlertTriangle, Globe } from 'lucide-react';
+import { Activity, Zap, TrendingUp, User, Landmark, Briefcase, TrendingDown, Users, Fingerprint, Loader2, Play, Radio, AlertTriangle, Globe, Dna } from 'lucide-react';
 import { generateInsight, ETCognifyInsight } from '../services/geminiService';
+import { useReadingTracker, savePerspectiveClick } from '../hooks/useReadingTracker';
 
 // --- Types ---
 type Perspective = 'Neutral' | 'Shareholder' | 'Gig Worker' | 'FII' | 'Farmer' | 'Short Seller';
 
 // --- Components ---
 
-const Header = ({ onNext }: { onNext: () => void }) => (
+const Header = ({ onNext, onDNA }: { onNext: () => void; onDNA: () => void }) => (
   <header className="border-b border-white/10 py-3 px-6 flex justify-between items-center bg-black/80 backdrop-blur-2xl z-50 sticky top-0">
     <div className="flex items-center gap-4">
       <div className="relative">
@@ -28,7 +30,7 @@ const Header = ({ onNext }: { onNext: () => void }) => (
       </div>
     </div>
 
-    <div className="flex items-center gap-8">
+    <div className="flex items-center gap-4">
       <button
         onClick={onNext}
         className="group flex items-center gap-3 bg-white/5 hover:bg-[#ED1C24] border border-white/10 hover:border-[#ED1C24] px-4 py-2 rounded-lg transition-all duration-500"
@@ -38,6 +40,14 @@ const Header = ({ onNext }: { onNext: () => void }) => (
           <span className="text-[10px] font-black uppercase tracking-tighter text-white">Load Intelligence</span>
         </div>
         <Zap className="w-4 h-4 text-[#FFD700] group-hover:text-white animate-pulse" />
+      </button>
+
+      <button
+        onClick={onDNA}
+        className="flex items-center gap-2 px-3 py-2 border border-[#FFD700]/30 rounded-lg text-[9px] font-black uppercase tracking-widest text-[#FFD700]/60 hover:text-[#FFD700] hover:border-[#FFD700]/60 hover:bg-[#FFD700]/5 transition-all"
+      >
+        <Dna className="w-3 h-3" />
+        <span className="hidden sm:inline">DNA</span>
       </button>
 
       <div className="hidden xl:flex items-center gap-6">
@@ -181,7 +191,7 @@ const NewsReportWithPerspectives = ({ headline, summary, perspectives }: {
           {(Object.keys(perspectives) as Perspective[]).map(p => (
             <button
               key={p}
-              onClick={() => setActive(p)}
+              onClick={() => { setActive(p); savePerspectiveClick(p); }}
               title={p}
               className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-500 ${active === p
                   ? 'bg-[#ED1C24] text-white scale-110 shadow-[0_10px_25px_rgba(237,28,36,0.5)] rotate-3'
@@ -243,9 +253,11 @@ const NewsReportWithPerspectives = ({ headline, summary, perspectives }: {
 };
 
 export default function App() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [insight, setInsight] = useState<ETCognifyInsight | null>(null);
   const [topicIndex, setTopicIndex] = useState(0);
+  const { startTracking, stopTracking } = useReadingTracker();
 
   const topics = [
     "Latest Indian Market Trends and Global Economic Impact",
@@ -305,12 +317,14 @@ export default function App() {
   const handleNextNews = () => {
     const nextIndex = (topicIndex + 1) % topics.length;
     setTopicIndex(nextIndex);
+    stopTracking();
+    startTracking(`arena_${topics[nextIndex]}`, topics[nextIndex], 'Arena');
     fetchInsight(nextIndex);
   };
 
   return (
     <div className="h-screen bg-[#050505] text-white font-sans selection:bg-[#ED1C24] selection:text-white flex flex-col overflow-hidden">
-      <Header onNext={handleNextNews} />
+      <Header onNext={handleNextNews} onDNA={() => navigate('/dna')} />
       <Seismograph />
 
       <main className="flex-1 p-3 grid grid-cols-12 grid-rows-6 gap-3 overflow-hidden relative">
