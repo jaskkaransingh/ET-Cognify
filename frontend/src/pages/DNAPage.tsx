@@ -51,7 +51,6 @@ function TopicBar({ topic, score, isBlindSpot }: { topic: string; score: number;
 
 // ─── Blind Spot Card ─────────────────────────────────────────────────────────
 const BLIND_SPOT_CONTEXT: Record<string, { why: string; risk: string; color: string }> = {
-  'Global Macro': { why: 'Global macro events directly drive FII flows and Nifty direction.', risk: 'High Risk', color: '#ED1C24' },
   'RBI': { why: 'RBI policy decisions affect your EMIs, bond yields, and banking stocks.', risk: 'High Risk', color: '#ED1C24' },
   'Markets': { why: 'Ignoring market trends can cost you entry/exit timing.', risk: 'High Risk', color: '#ED1C24' },
   'Mutual Funds': { why: 'MF regulations and category changes affect your SIP returns.', risk: 'Medium Risk', color: '#FFD700' },

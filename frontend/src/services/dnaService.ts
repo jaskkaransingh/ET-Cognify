@@ -28,7 +28,7 @@ export interface DNAProfile {
   lastUpdated: string;
 }
 
-const IMPORTANT_TOPICS = ['Global Macro', 'RBI', 'Markets', 'Mutual Funds', 'Banking'];
+const IMPORTANT_TOPICS = ['RBI', 'Markets', 'Mutual Funds', 'Banking'];
 
 function getSessions(): ReadingSession[] {
   try {
@@ -93,13 +93,11 @@ function inferInvestorType(traits: TopicScore[]): { type: string; description: s
   const rbi = get('RBI');
   const it = get('IT Sector');
   const mf = get('Mutual Funds');
-  const macro = get('Global Macro');
   const markets = get('Markets');
 
   if (rbi > 65 && markets < 40) return { type: 'Cautious Accumulator', description: 'You closely track policy signals before making any moves.' };
-  if (it > 60 && (get('Tech') > 40 || get('Global Macro') > 40)) return { type: 'Growth Chaser', description: 'You chase high-growth opportunities and thrive on momentum plays.' };
+  if (it > 60 && get('Tech') > 40) return { type: 'Growth Chaser', description: 'You chase high-growth opportunities and thrive on momentum plays.' };
   if (mf > 60) return { type: 'Steady Compounder', description: 'You believe in the power of long-term disciplined investing through SIPs.' };
-  if (macro > 60) return { type: 'Global Thinker', description: 'You connect global macro events to domestic market opportunities.' };
 
   const spread = Math.max(...traits.map(t => t.score)) - Math.min(...traits.map(t => t.score));
   if (traits.length >= 4 && spread < 30) return { type: 'Curious Explorer', description: 'You consume a wide range of financial news without a defined focus yet.' };

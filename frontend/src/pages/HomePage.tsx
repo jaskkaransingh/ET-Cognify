@@ -73,7 +73,6 @@ export default function HomePage() {
   const [activeConfirmKey, setActiveConfirmKey] = useState<ProductKey | null>(null);
 
   const fallbackHeadlines = [
-    { id: '1', tag: "Global Macro", title: "Rate hikes are done. The era of cheap capital returns.", impact: "Critical Impact", time: "2 mins ago" },
     { id: '2', tag: "Tech", title: "European regulators mandate cloud infrastructure breakup.", impact: "High Impact", time: "14 mins ago" },
     { id: '3', tag: "Industry", title: "Semiconductor fabrication yields miss Q3 targets by 14%.", impact: "Watchlist", time: "1 hour ago" },
     { id: '4', tag: "Markets", title: "Private lenders expand credit limits amidst liquidity crunch.", impact: "Medium Impact", time: "2 hours ago" },
@@ -238,29 +237,34 @@ export default function HomePage() {
 
         {/* Dynamic Seismograph Ticker (Moved Below Filter) */}
         {!loading && (
-          <section className="bg-[#121212] border border-white/5 rounded-lg py-2 mb-3 overflow-hidden relative shrink-0">
-            <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#121212] to-transparent z-10 pointer-events-none" />
-            <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#121212] to-transparent z-10 pointer-events-none" />
-            <div className="flex whitespace-nowrap group">
-              {[...Array(2)].map((_, groupIdx) => (
-                <div 
-                  key={groupIdx} 
-                  className="flex shrink-0 items-center gap-12 pr-12 animate-slide-infinite group-hover:[animation-play-state:paused]"
-                  style={{ animationDuration: `${Math.max(tickerStories.length * 6, 60)}s` }}
-                >
-                  <div className="flex items-center gap-3 text-[#00FF41] font-black text-[9px] uppercase tracking-[0.4em]">
-                    <Activity className="w-4 h-4 animate-pulse" />
-                    Live Intel
+          <section className="bg-[#121212] border border-white/5 rounded-lg py-2 mb-3 overflow-hidden relative shrink-0 flex items-center">
+            {/* Static Label */}
+            <div className="flex items-center gap-3 px-4 text-[#00FF41] font-black text-[9px] uppercase tracking-[0.4em] z-20 shrink-0 bg-[#121212] border-r border-white/10 h-full">
+              <Activity className="w-4 h-4 animate-pulse" />
+              Live Intel
+            </div>
+
+            {/* Scrolling Area */}
+            <div className="flex-1 overflow-hidden relative flex">
+              <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#121212] to-transparent z-10 pointer-events-none" />
+              <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#121212] to-transparent z-10 pointer-events-none" />
+              <div className="flex whitespace-nowrap group">
+                {[...Array(2)].map((_, groupIdx) => (
+                  <div 
+                    key={groupIdx} 
+                    className="flex shrink-0 items-center gap-12 pl-12 pr-12 animate-slide-infinite group-hover:[animation-play-state:paused]"
+                    style={{ animationDuration: `${Math.max(tickerStories.length * 6, 60)}s` }}
+                  >
+                    {tickerStories.map((t, idx) => (
+                      <div key={idx} className="flex items-center gap-4 text-[11px] font-bold cursor-crosshair" onClick={() => navigate('/arena')}>
+                        <span className="text-[#ED1C24] font-mono tracking-tighter">[{t.time}]</span>
+                        <span className="text-[#00FF41] hover:text-white transition-colors">{t.title}</span>
+                        <span className="text-white/10">/</span>
+                      </div>
+                    ))}
                   </div>
-                  {tickerStories.map((t, idx) => (
-                    <div key={idx} className="flex items-center gap-4 text-[11px] font-bold cursor-crosshair" onClick={() => navigate('/arena')}>
-                      <span className="text-[#ED1C24] font-mono tracking-tighter">[{t.time}]</span>
-                      <span className="text-[#00FF41] hover:text-white transition-colors">{t.title}</span>
-                      <span className="text-white/10">/</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </section>
         )}

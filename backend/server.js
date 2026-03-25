@@ -13,7 +13,7 @@ const parser = new Parser();
 
 // Array of all major ET domains to aggregate
 const ET_FEEDS = [
-  { url: 'https://economictimes.indiatimes.com/rssfeedsdefault.cms', tag: 'Top Story' },
+  { url: 'https://economictimes.indiatimes.com/rssfeedsdefault.cms', tag: 'Top News Trending' },
   { url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', tag: 'Markets' },
   { url: 'https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms', tag: 'Tech' },
   { url: 'https://economictimes.indiatimes.com/industry/rssfeeds/13352306.cms', tag: 'Industry' },
@@ -77,7 +77,7 @@ app.get('/api/headlines', async (req, res) => {
 
       return {
         id: index.toString() + item.title.substring(0, 5), // unique enough key
-        tag: index === 0 ? "Global Macro" : item._sourceTag,
+        tag: item._sourceTag,
         title: item.title,
         impact,
         time: timeStr,
