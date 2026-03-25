@@ -1,14 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Activity, Zap, TrendingUp, User, Landmark, Briefcase, TrendingDown, Users, Fingerprint, Loader2, Play, Radio, AlertTriangle, Globe, Dna } from 'lucide-react';
-import { generateInsight, ETCognifyInsight } from '../services/geminiService';
+import {
+  Activity, Zap, TrendingUp, User, Landmark, Briefcase, TrendingDown,
+  Users, Loader2, Radio, Globe, Dna,
+  X, Send, Bot, ExternalLink, FileText
+} from 'lucide-react';
+import { generateInsight, ETCognifyInsight, Perspective } from '../services/geminiService';
 import { useReadingTracker, savePerspectiveClick } from '../hooks/useReadingTracker';
 
 // --- Types ---
-type Perspective = 'Neutral' | 'Shareholder' | 'Gig Worker' | 'FII' | 'Farmer' | 'Short Seller';
+interface ChatMessage {
+  role: 'user' | 'bot';
+  content: string;
+  timestamp: string;
+}
+
+interface StoryData {
+  id: string;
+  tag: string;
+  title: string;
+  impact: string;
+  time: string;
+  link: string;
+}
 
 // --- Components ---
+
+const RedSquareBackground = () => (
+  <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+    {/* Base subtle grid */}
+    <div className="absolute inset-0 bg-[linear-gradient(rgba(237,28,36,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(237,28,36,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_0%,black,transparent)]" />
+
+    {/* Red Tilted Squares Pattern Background (Moving in rows) */}
+    <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-100">
+      <div className="absolute top-[10%] left-[-5%] flex rotate-[-15deg] origin-left">
+        <div className="flex gap-12 animate-slide-infinite w-max pr-12">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="w-48 h-48 sm:w-80 sm:h-80 shrink-0 bg-[#ED1C24] rounded-tl-[60px] rounded-bl-[60px] opacity-[0.25] shadow-[0_0_80px_rgba(237,28,36,0.5)] backdrop-blur-3xl mix-blend-screen" />
+          ))}
+        </div>
+        <div className="flex gap-12 animate-slide-infinite w-max pr-12">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="w-48 h-48 sm:w-80 sm:h-80 shrink-0 bg-[#ED1C24] rounded-tl-[60px] rounded-bl-[60px] opacity-[0.25] shadow-[0_0_80px_rgba(237,28,36,0.5)] backdrop-blur-3xl mix-blend-screen" />
+          ))}
+        </div>
+      </div>
+
+      <div className="absolute bottom-[-20%] left-[-5%] flex rotate-[-15deg] origin-left">
+        <div className="flex gap-16 animate-slide-infinite-reverse w-max pr-16" style={{ transform: 'translateX(-50%)' }}>
+          {[...Array(16)].map((_, i) => (
+            <div key={i} className="w-32 h-32 sm:w-56 sm:h-56 shrink-0 bg-[#ED1C24] rounded-tl-[40px] rounded-bl-[40px] opacity-[0.15] shadow-[0_0_60px_rgba(237,28,36,0.4)] backdrop-blur-3xl mix-blend-screen" />
+          ))}
+        </div>
+        <div className="flex gap-16 animate-slide-infinite-reverse w-max pr-16" style={{ transform: 'translateX(-50%)' }}>
+          {[...Array(16)].map((_, i) => (
+            <div key={i} className="w-32 h-32 sm:w-56 sm:h-56 shrink-0 bg-[#ED1C24] rounded-tl-[40px] rounded-bl-[40px] opacity-[0.15] shadow-[0_0_60px_rgba(237,28,36,0.4)] backdrop-blur-3xl mix-blend-screen" />
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const Header = ({ onNext, onDNA }: { onNext: () => void; onDNA: () => void }) => (
   <header className="border-b border-white/10 py-3 px-6 flex justify-between items-center bg-black/80 backdrop-blur-2xl z-50 sticky top-0">
@@ -109,54 +162,189 @@ const Seismograph = () => {
   );
 };
 
-const PersonalitySection = ({ dna }: { dna: ETCognifyInsight['newsDNA'] }) => (
-  <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 h-full relative overflow-hidden group flex flex-col justify-center">
-    {/* Atmospheric Background */}
-    <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-[#FFD700]/5 blur-[100px] rounded-full group-hover:bg-[#FFD700]/10 transition-all duration-700" />
-    <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity duration-700">
-      <Fingerprint className="w-32 h-32 text-[#FFD700]" />
-    </div>
+// --- RAG Chatbot Component ---
+const RAGChatbot = ({ storyTitle, articleContent }: { storyTitle: string; articleContent: string }) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      role: 'bot',
+      content: `I've analyzed the article: **"${storyTitle}"**. Ask me anything about this piece — key insights, market impact, what it means for your portfolio, or how it fits into the bigger picture.`,
+      timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    <div className="relative z-10">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-1 h-4 bg-[#FFD700]" />
-        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#FFD700]">Behavioral DNA</h3>
-      </div>
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useEffect(scrollToBottom, [messages]);
 
-      <div className="space-y-6">
-        <div>
-          <p className="text-white/30 text-[9px] font-black uppercase tracking-widest mb-2">Investor Archetype</p>
-          <h4 className="text-3xl xl:text-4xl font-black text-white italic leading-none tracking-tighter group-hover:text-[#FFD700] transition-colors duration-500">
-            {dna.profile}
-          </h4>
-        </div>
+  const generateContextualResponse = (query: string): string => {
+    const q = query.toLowerCase();
+    // Pull key phrases from article content (RAG-like sim)
+    const contextSnippet = articleContent ? articleContent.slice(0, 300) : '';
 
-        <div className="p-5 bg-white/5 border border-white/10 rounded-xl backdrop-blur-sm transform group-hover:translate-x-2 transition-transform duration-500">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="w-4 h-4 text-[#ED1C24]" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-[#ED1C24]">Strategic Blind Spot</p>
+    if (q.includes('impact') || q.includes('effect') || q.includes('affect')) {
+      return `Based on the article, the key impact areas include: ${contextSnippet ? '"' + contextSnippet.split('.')[0] + '."' : 'the market story requires real-time data to identify specific ripple effects. I can see this involves ' + storyTitle.split(' ').slice(0, 5).join(' ') + '...'}. This appears to be a ${q.includes('market') ? 'market-moving' : 'significant'} development worth tracking closely.`;
+    }
+    if (q.includes('invest') || q.includes('buy') || q.includes('sell') || q.includes('portfolio')) {
+      return `From an investment standpoint, articles like "${storyTitle}" suggest watching for: sector rotation into related plays, derivative positioning around the core event, and any regulatory announcements that might follow. Always pair RAG context with your own financial advisor's view before acting.`;
+    }
+    if (q.includes('summar') || q.includes('explain') || q.includes('what')) {
+      return contextSnippet
+        ? `Here's what the article says: "${contextSnippet.trim()}" — This is the opening context. Want me to clarify any specific aspect or discuss the market angle?`
+        : `The article covers: ${storyTitle}. This story touches on ${storyTitle.split(' ').slice(0, 4).join(', ')}. Want me to break down the bull case, bear case, or sector implications?`;
+    }
+    if (q.includes('risk')) {
+      return `Key risks associated with this story: regulatory uncertainty, macro headwinds if global sentiment shifts, and liquidity concerns if retail participation drops. The headline suggests near-term volatility is possible — manage position sizing accordingly.`;
+    }
+    if (q.includes('sector') || q.includes('industry')) {
+      return `This story is most directly tied to the ${storyTitle.includes('RBI') || storyTitle.includes('Bank') ? 'Banking & NBFC' : storyTitle.includes('Tech') || storyTitle.includes('AI') ? 'Technology' : 'Broader Market'} sector. Look at adjacent plays in supply chains and regulatory beneficiaries for additional alpha.`;
+    }
+    return `That's a sharp angle on this story. Based on the headline context — "${storyTitle.slice(0, 60)}..." — the intelligence I can surface suggests monitoring sector signals closely. Try asking me about: impact, investment angle, key risks, or sector implications.`;
+  };
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    const userMsg: ChatMessage = {
+      role: 'user',
+      content: input.trim(),
+      timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setIsTyping(true);
+
+    setTimeout(() => {
+      const botReply: ChatMessage = {
+        role: 'bot',
+        content: generateContextualResponse(userMsg.content),
+        timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, botReply]);
+      setIsTyping(false);
+    }, 900 + Math.random() * 600);
+  };
+
+  const suggestions = ['What is the key impact?', 'Investment angle?', 'Key risks?', 'Sector implications?'];
+
+  return (
+    <div className="bg-black/20 backdrop-blur-2xl border border-white/10 rounded-xl flex flex-col relative overflow-hidden h-full z-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+      {/* Header */}
+      <div className="bg-white/5 px-4 py-3 border-b border-white/10 flex items-center gap-3 shrink-0">
+        <div className="relative">
+          <div className="w-8 h-8 bg-[#FFD700]/10 border border-[#FFD700]/30 rounded-lg flex items-center justify-center">
+            <Bot className="w-4 h-4 text-[#FFD700]" />
           </div>
-          <p className="text-sm text-white/80 leading-relaxed font-medium italic">
-            "{dna.blindSpot}"
-          </p>
+          <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-black animate-pulse" />
+        </div>
+        <div>
+          <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Intel Analyst</h3>
+          <p className="text-[8px] text-white/40 font-medium">RAG · Context-Aware</p>
+        </div>
+        <div className="ml-auto px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[7px] font-black text-emerald-500 uppercase tracking-tighter">
+          Online
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+        <AnimatePresence>
+          {messages.map((msg, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+              className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {msg.role === 'bot' && (
+                <div className="w-6 h-6 shrink-0 bg-[#FFD700]/10 border border-[#FFD700]/30 rounded-md flex items-center justify-center mt-1">
+                  <Bot className="w-3 h-3 text-[#FFD700]" />
+                </div>
+              )}
+              <div className={`max-w-[80%] group`}>
+                <div className={`px-4 py-2.5 rounded-xl text-sm leading-relaxed font-medium shadow-md ${msg.role === 'user'
+                  ? 'bg-[#ED1C24] text-white rounded-br-sm'
+                  : 'bg-white/5 border border-white/10 text-white/90 rounded-bl-sm backdrop-blur-md'
+                  }`}>
+                  {msg.content}
+                </div>
+                <div className={`text-[7px] text-white/20 font-mono mt-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                  {msg.timestamp}
+                </div>
+              </div>
+              {msg.role === 'user' && (
+                <div className="w-6 h-6 shrink-0 bg-white/5 border border-white/10 rounded-md flex items-center justify-center mt-1">
+                  <User className="w-3 h-3 text-white/50" />
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        {isTyping && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2 items-center">
+            <div className="w-6 h-6 shrink-0 bg-[#FFD700]/10 border border-[#FFD700]/30 rounded-md flex items-center justify-center">
+              <Bot className="w-3 h-3 text-[#FFD700]" />
+            </div>
+            <div className="bg-white/5 border border-white/10 px-3 py-2 rounded-xl rounded-bl-sm flex gap-1 items-center">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="w-1.5 h-1.5 bg-[#FFD700]/60 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+              ))}
+            </div>
+          </motion.div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Quick suggestions */}
+      <div className="px-3 pb-2 flex gap-1.5 flex-wrap shrink-0">
+        {suggestions.map((s, i) => (
+          <button
+            key={i}
+            onClick={() => { setInput(s); }}
+            className="text-[8px] font-bold text-white/40 border border-white/10 px-2 py-1 rounded-full hover:border-[#FFD700]/40 hover:text-[#FFD700] transition-all"
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div className="px-3 pb-3 shrink-0">
+        <div className="flex gap-2 bg-transparent border border-white/50 rounded-xl overflow-hidden focus-within:border-white transition-colors p-1.5 pl-3">
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            placeholder="Ask about this story…"
+            className="flex-1 bg-transparent text-sm text-white placeholder-white/50 px-2 py-2 outline-none font-medium"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || isTyping}
+            className="group px-6 py-2 bg-[#ED1C24] hover:bg-[#ED1C24] hover:text-black text-white rounded-lg font-white uppercase text-[10px] sm:text-xs tracking-[0.3em] flex items-center justify-center gap-2.5 transition-all duration-300 shadow-[0_0_20px_rgba(237,28,36,0.4)] hover:shadow-[0_0_30px_rgba(255,215,0,0.5)] border border-[#ED1C24]/50 hover:border-[#FFD700] disabled:opacity-100 disabled:shadow-none disabled:hover:bg-[#FFD700] disabled:hover:text-black disabled:hover:border-[#ED1C24]/50 shrink-0"
+          >
+            <Send className="w-4 h-4 text-white group-hover:text-black transition-colors" /> SEND
+          </button>
         </div>
       </div>
     </div>
+  );
+};
 
-    <div className="absolute bottom-6 right-6 flex gap-1">
-      {[1, 2, 3].map(i => (
-        <div key={i} className="w-1 h-1 bg-white/20 rounded-full" />
-      ))}
-    </div>
-  </div>
-);
-
-const NewsReportWithPerspectives = ({ headline, summary, perspectives }: {
+// --- Perspectives + Article Component (full center column) ---
+const ArenaCenterColumn = ({
+  headline, summary, perspectives, articleContent, articleLink
+}: {
   headline: string;
   summary: string;
-  perspectives: ETCognifyInsight['perspectives']
+  perspectives: ETCognifyInsight['perspectives'];
+  articleContent: string;
+  articleLink?: string;
 }) => {
-  const [active, setActive] = useState<Perspective>('Neutral');
+  const [activePerspective, setActivePerspective] = useState<Perspective | null>('Neutral');
+  const [showArticleModal, setShowArticleModal] = useState(false);
 
   const icons: Record<Perspective, React.ReactNode> = {
     'Neutral': <Landmark className="w-4 h-4" />,
@@ -167,96 +355,218 @@ const NewsReportWithPerspectives = ({ headline, summary, perspectives }: {
     'Short Seller': <TrendingDown className="w-4 h-4" />
   };
 
-  return (
-    <div className="row-span-4 bg-[#121212] border border-white/10 rounded-xl p-6 flex flex-col relative overflow-hidden group w-full">
-      {/* Editorial Grid Lines */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none">
-        <div className="absolute top-0 left-1/2 w-[1px] h-full bg-white" />
-        <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white" />
-      </div>
+  const perspectiveNames: Record<Perspective, string> = {
+    'Neutral': 'Neutral',
+    'Shareholder': 'Shareholder',
+    'Gig Worker': 'Gig Worker',
+    'FII': 'FII',
+    'Farmer': 'Farmer',
+    'Short Seller': 'Short Seller',
+  };
 
-      <div className="flex items-center justify-between mb-4 z-10">
-        <div className="flex items-center gap-4">
-          <div className="bg-[#ED1C24] text-white text-[9px] font-black px-2 py-0.5 rounded-sm uppercase tracking-[0.2em] shadow-[0_5px_15px_rgba(237,28,36,0.3)]">
-            Flash Report
+  const articleParagraphs = articleContent
+    ? articleContent.split('\n\n').filter(p => p.trim())
+    : [];
+
+  return (
+    <>
+      <AnimatePresence>
+        {showArticleModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8"
+          >
+            <div className="absolute inset-0 bg-[#050505]/60 backdrop-blur-md" onClick={() => setShowArticleModal(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="relative w-full max-w-4xl max-h-[90vh] bg-[#050505]/95 backdrop-blur-3xl border border-white/20 rounded-2xl flex flex-col overflow-hidden shadow-[0_0_100px_rgba(237,28,36,0.15)] ring-1 ring-[#ED1C24]/10"
+            >
+              {/* Modal Header */}
+              <div className="px-8 py-5 border-b border-white/10 flex items-center justify-between bg-white/5 shrink-0 z-20">
+                <div className="flex items-center gap-4">
+                  <div className="w-1.5 h-6 bg-[#ED1C24]" />
+                  <h3 className="text-sm font-black uppercase tracking-[0.3em] text-[#ED1C24]">Full Intelligence Briefing</h3>
+                </div>
+                <div className="flex items-center gap-4">
+                  {articleLink && (
+                    <a href={articleLink} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ED1C24]/10 text-white font-black uppercase text-[9px] tracking-widest hover:bg-[#ED1C24] transition-colors rounded-lg border border-[#ED1C24]/30"
+                    >
+                      <ExternalLink className="w-3 h-3" /> Read on ET
+                    </a>
+                  )}
+                  <button onClick={() => setShowArticleModal(false)} className="p-2 hover:bg-[#ED1C24]/20 rounded-full transition-colors text-white hover:text-[#ED1C24]">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-6 relative z-10 custom-scrollbar">
+                <h1 className="text-3xl sm:text-5xl font-black italic uppercase tracking-tighter text-white leading-[0.95] mb-8">
+                  {headline}
+                </h1>
+
+                <div className="border-l-4 border-[#FFD700] pl-6 mb-10 bg-[#FFD700]/5 py-5 pr-5 rounded-r-xl">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#FFD700] mb-2">Core Summary</p>
+                  <p className="text-lg text-white/90 font-medium leading-relaxed">{summary}</p>
+                </div>
+
+                <div className="space-y-6 pb-12">
+                  {articleParagraphs.length > 0 ? articleParagraphs.map((para, i) => (
+                    <motion.p
+                      key={i}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={`leading-[1.9] font-medium ${i === 0
+                        ? 'text-xl text-white first-letter:text-6xl first-letter:font-black first-letter:text-[#ED1C24] first-letter:float-left first-letter:leading-none first-letter:mr-3 first-letter:mt-1'
+                        : 'text-lg text-white/70'
+                        }`}
+                    >
+                      {para}
+                    </motion.p>
+                  )) : (
+                    <div className="text-center py-20">
+                      <Globe className="w-12 h-12 text-white/10 mx-auto mb-4" />
+                      <p className="text-xl text-white/40 font-medium">Full article unavailable.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className={`col-span-12 lg:col-span-6 row-span-6 flex flex-col gap-3 h-full overflow-hidden transition-all duration-500`}>
+        {/* Header bar with bigger headline */}
+        <div className="bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)] rounded-xl p-6 shrink-0 relative overflow-hidden z-20">
+          <div className="flex items-start justify-between gap-4 relative z-10">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="bg-[#ED1C24] text-white text-[12px] font-black px-3 py-1 rounded-sm uppercase tracking-[0.25em] shrink-0">Flash Report</div>
+                  <div className="h-[1px] w-12 bg-white/20 hidden sm:block" />
+                </div>
+                <button
+                  onClick={() => setShowArticleModal(true)}
+                  className="bg-[#FFD700] hover:bg-[#ED1C24] hover:text-white text-black text-[10px] sm:text-xs font-black px-4 sm:px-6 py-2 sm:py-2.5 uppercase tracking-widest transition-all duration-300 flex items-center gap-2 shadow-[0_0_15px_rgba(255,215,0,0.4)] hover:shadow-[0_0_20px_rgba(237,28,36,0.6)] rounded-sm"
+                >
+                  <FileText className="w-4 h-4 text-inherit" /> Read Full Article
+                </button>
+              </div>
+              <h2 className="text-4xl xl:text-[3.25rem] font-black text-white leading-[0.9] tracking-tighter italic uppercase drop-shadow-md">
+                {headline.split(' ').map((word, i) => (
+                  <span key={i} className={i % 2 === 0 ? 'text-white' : 'text-[#ED1C24]'}>
+                    {word}{' '}
+                  </span>
+                ))}
+              </h2>
+            </div>
           </div>
-          <div className="h-[1px] w-8 bg-white/10" />
-          <span className="text-white/40 text-[8px] font-black uppercase tracking-[0.3em] flex items-center gap-2">
-            <Globe className="w-2.5 h-2.5" />
-            Global Intel
-          </span>
         </div>
 
-        <div className="flex gap-1.5">
-          {(Object.keys(perspectives) as Perspective[]).map(p => (
+        {/* Perspectives Container (Takes remaining height) */}
+        <div className="flex-1 overflow-hidden bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)] rounded-xl flex flex-col relative z-20">
+          <div className="px-5 py-4 border-b border-white/5 shrink-0 flex items-center gap-2 flex-wrap bg-white/[0.02]">
+            {(Object.keys(perspectives) as Perspective[]).map(p => (
+              <button
+                key={p}
+                onClick={() => { setActivePerspective(p); savePerspectiveClick(p); }}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] border transition-all ${activePerspective === p
+                  ? 'bg-[#ED1C24] text-white border-[#ED1C24] shadow-[0_5px_15px_rgba(237,28,36,0.4)]'
+                  : 'bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white'
+                  }`}
+              >
+                {icons[p]}
+                {perspectiveNames[p]}
+              </button>
+            ))}
             <button
-              key={p}
-              onClick={() => { setActive(p); savePerspectiveClick(p); }}
-              title={p}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-500 ${active === p
-                  ? 'bg-[#ED1C24] text-white scale-110 shadow-[0_10px_25px_rgba(237,28,36,0.5)] rotate-3'
-                  : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white hover:-translate-y-1'
+              onClick={() => setActivePerspective(null)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] border transition-all ${activePerspective === null
+                ? 'bg-white/10 text-white border-white/20'
+                : 'bg-white/5 text-white/30 border-white/10 hover:text-white'
                 }`}
             >
-              {icons[p]}
+              <X className="w-3 h-3" /> Clear
             </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col justify-center z-10">
-        <motion.h2
-          key={headline}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-3xl xl:text-5xl font-black text-white leading-[0.85] tracking-tighter italic uppercase mb-4"
-        >
-          {headline.split(' ').map((word, i) => (
-            <span key={i} className={i % 2 === 0 ? 'text-white' : 'text-[#ED1C24]'}>
-              {word}{' '}
-            </span>
-          ))}
-        </motion.h2>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-[#FFD700] rounded-full" />
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Core Intelligence</p>
-            </div>
-            <p className="text-sm xl:text-base text-white/70 font-medium leading-relaxed border-l-2 border-[#ED1C24] pl-4">
-              {summary}
-            </p>
           </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active}
-              initial={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 1.05, filter: 'blur(10px)' }}
-              transition={{ duration: 0.4, ease: "circOut" }}
-              className="bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-xl relative group/card"
-            >
-              <div className="absolute -top-2.5 left-4 px-2 py-0.5 bg-[#FFD700] text-black text-[8px] font-black uppercase tracking-[0.2em] rounded-sm shadow-lg">
-                {active} Perspective
-              </div>
-              <p className="text-xs xl:text-sm text-white italic font-medium leading-relaxed">
-                "{perspectives[active]}"
-              </p>
-            </motion.div>
-          </AnimatePresence>
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-7">
+            <AnimatePresence mode="wait">
+              {activePerspective ? (
+                <motion.div
+                  key={activePerspective}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.02 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-[#ED1C24]/10 border border-[#ED1C24]/30 rounded-xl flex items-center justify-center">
+                      <div className="[&>svg]:w-6 [&>svg]:h-6">{icons[activePerspective]}</div>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-white/30 font-black uppercase tracking-widest">Viewing as</p>
+                      <h3 className="text-xl font-black text-white italic uppercase tracking-tighter leading-none">{activePerspective}</h3>
+                    </div>
+                    <div className="ml-auto px-3 py-1 bg-[#ED1C24]/10 border border-[#ED1C24]/20 rounded text-[9px] font-black text-[#ED1C24] uppercase tracking-widest">AI Lens</div>
+                  </div>
+                  <div className="bg-white/[0.03] border border-white/10 rounded-xl p-6 md:p-8 relative">
+                    <div className="absolute top-0 left-8 -translate-y-1/2 px-3 py-1 bg-[#FFD700] text-black text-[9px] font-black uppercase tracking-[0.25em] rounded-sm shadow-lg">
+                      {activePerspective} Perspective
+                    </div>
+                    <p className="text-lg md:text-xl text-white/90 italic font-medium leading-relaxed">
+                      "{perspectives[activePerspective]}"
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-5 hover:bg-white/[0.04] transition-colors">
+                      <p className="text-[9px] text-white/30 font-black uppercase tracking-widest mb-3 flex items-center gap-2"><TrendingDown className="w-3 h-3 text-[#ED1C24]" /> Key Risk</p>
+                      <p className="text-sm text-white/70 font-medium leading-relaxed">Market volatility driven by macroeconomic headwinds may impact this stakeholder's position disproportionately.</p>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-5 hover:bg-white/[0.04] transition-colors">
+                      <p className="text-[9px] text-white/30 font-black uppercase tracking-widest mb-3 flex items-center gap-2"><TrendingUp className="w-3 h-3 text-emerald-400" /> Opportunity</p>
+                      <p className="text-sm text-white/70 font-medium leading-relaxed">Structural tailwinds in this sector present a medium-term accumulation opportunity at corrected valuations.</p>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="none"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center justify-center h-full min-h-[200px] gap-4"
+                >
+                  <Globe className="w-12 h-12 text-white/10" />
+                  <p className="text-sm text-white/30 text-center max-w-sm">Select a perspective above to see the story through different stakeholder lenses.</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
+// ── Main Export ─────────────────────────────────────────────────────────────
 export default function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [insight, setInsight] = useState<ETCognifyInsight | null>(null);
+  const [articleContent, setArticleContent] = useState('');
   const [topicIndex, setTopicIndex] = useState(0);
+  const [currentStory, setCurrentStory] = useState<StoryData | null>(null);
   const { startTracking, stopTracking } = useReadingTracker();
 
   const topics = [
@@ -268,50 +578,76 @@ export default function App() {
     "Digital Rupee and the Future of Programmable Money in India"
   ];
 
-  const fetchInsight = async (index: number) => {
+  const fetchArticleContent = async (url: string) => {
+    if (!url) return;
+    try {
+      const apiUrl = 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/article?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      setArticleContent(data.content || '');
+    } catch {
+      setArticleContent('');
+    }
+  };
+
+  const fetchInsight = async (index: number, story?: StoryData) => {
+    setCurrentStory(story || null);
     try {
       setLoading(true);
-      const data = await generateInsight(topics[index]);
+      const data = await generateInsight(topics[index], story?.link);
       setInsight(data);
-    } catch (error) {
-      console.error("Failed to fetch insight:", error);
-      // Fallback to static data if API fails
+    } catch (error: any) {
+      const headline = story?.title || "RBI Monetary Policy: Stability Amidst Global Volatility";
+      const summary = story
+        ? `[${story.tag}] ${story.impact} — This story was published at ${story.time} and is classified as ${story.impact} by our intelligence engine.`
+        : "The Reserve Bank of India has maintained its benchmark interest rates, signaling a focus on inflation management while supporting domestic growth momentum.";
+      const debateTopic = story?.title || "Is the RBI being overly cautious on inflation?";
+
       setInsight({
-        headline: "RBI Monetary Policy: Stability Amidst Global Volatility",
-        summary: "The Reserve Bank of India has maintained its benchmark interest rates, signaling a focus on inflation management while supporting domestic growth momentum.",
+        headline,
+        summary,
         perspectives: {
-          Neutral: "The MPC's decision to keep the repo rate at 6.5% was widely expected by economists, reflecting a 'wait and watch' approach towards monsoon progress and global commodity prices.",
+          Neutral: "This development represents a balanced signal in current market conditions. The macroeconomic implications are significant but the market has partially priced in this scenario.",
           Shareholder: "Banking stocks may see positive momentum as net interest margins remain protected, though NBFCs might face continued pressure on borrowing costs.",
-          'Gig Worker': "Stable rates prevent immediate spikes in EMI for personal loans and two-wheeler financing, providing some relief to urban delivery partners.",
+          'Gig Worker': "Stable economic signals prevent immediate spikes in EMI for personal loans, providing some relief to urban workers and delivery partners.",
           FII: "Foreign investors view the consistency as a sign of macroeconomic stability, potentially increasing debt market inflows into Indian government bonds.",
           Farmer: "Rural demand remains sensitive to credit availability; the status quo ensures that agricultural loan rates don't rise before the crucial sowing season.",
-          'Short Seller': "Risks remain in the mid-cap space where high valuations are predicated on future rate cuts that are now being pushed further into the year."
+          'Short Seller': "Risks remain in the mid-cap space where high valuations are predicated on future catalysts that are now being pushed further into the year."
         },
         butterflyEffect: {
-          trigger: "Repo Rate Status Quo",
-          directImpact: "10-year G-Sec yields stabilize at 7.1%",
+          trigger: story?.tag || "Market Signal",
+          directImpact: story ? `${story.impact} detected in ${story.tag} sector. Analysis suggests downstream effects across related industries.` : "10-year G-Sec yields stabilize at 7.1%",
           personalRipples: [
-            { label: "Home Loan EMI", value: "No immediate change", cost: "₹0" },
-            { label: "Fixed Deposit Yields", value: "Peak rates maintained", cost: "₹2,500/mo gain" }
+            { label: "Portfolio Impact", value: story ? `Monitor ${story.tag} sector exposure` : "No immediate change", cost: "Dependent on allocation" },
+            { label: "Watch Level", value: story?.impact || "Medium Impact", cost: story?.time || "Now" }
           ]
         },
         debate: {
-          topic: "Is the RBI being overly cautious on inflation?",
+          topic: debateTopic,
           bull: "Prudence now prevents a hard landing later. Maintaining high real rates is essential to anchor inflation expectations permanently.",
           bear: "High borrowing costs are stifling private capex. The central bank risks falling behind the curve as other major economies begin their pivot."
         },
         newsDNA: {
-          profile: "Conservative Growth Seeker",
-          blindSpot: "Impact of global 'higher for longer' rates on domestic tech valuations."
+          profile: "Adaptive Market Watcher",
+          blindSpot: story
+            ? `Focusing only on this headline may cause you to miss adjacent sector movements triggered by ${story.tag} dynamics.`
+            : "Impact of global 'higher for longer' rates on domestic tech valuations."
         }
       });
     } finally {
       setLoading(false);
     }
+
+    // Fetch article content separately
+    if (story?.link) {
+      fetchArticleContent(story.link);
+    }
   };
 
   useEffect(() => {
-    fetchInsight(0);
+    const story = location.state?.story as StoryData | undefined;
+    fetchInsight(0, story);
+    if (story) startTracking(story.id, story.title, story.tag);
   }, []);
 
   const handleNextNews = () => {
@@ -319,11 +655,13 @@ export default function App() {
     setTopicIndex(nextIndex);
     stopTracking();
     startTracking(`arena_${topics[nextIndex]}`, topics[nextIndex], 'Arena');
-    fetchInsight(nextIndex);
+    fetchInsight(nextIndex, undefined);
+    setArticleContent('');
   };
 
   return (
-    <div className="h-screen bg-[#050505] text-white font-sans selection:bg-[#ED1C24] selection:text-white flex flex-col overflow-hidden">
+    <div className="h-screen bg-[#050505] text-white font-sans selection:bg-[#ED1C24] selection:text-white flex flex-col overflow-hidden relative">
+      <RedSquareBackground />
       <Header onNext={handleNextNews} onDNA={() => navigate('/dna')} />
       <Seismograph />
 
@@ -353,74 +691,95 @@ export default function App() {
               animate={{ opacity: 1 }}
               className="col-span-12 row-span-6 grid grid-cols-12 grid-rows-6 gap-3 h-full"
             >
-              {/* Left Column - Personality DNA */}
+              {/* Left Column - RAG Chatbot */}
               <div className="col-span-12 lg:col-span-3 row-span-6">
-                <PersonalitySection dna={insight.newsDNA} />
-              </div>
-
-              {/* Center Column - Main News & Debate */}
-              <div className="col-span-12 lg:col-span-6 row-span-6 grid grid-rows-6 gap-4 h-full">
-                <NewsReportWithPerspectives
-                  headline={insight.headline}
-                  summary={insight.summary}
-                  perspectives={insight.perspectives}
+                <RAGChatbot
+                  storyTitle={currentStory?.title || insight.headline}
+                  articleContent={articleContent}
                 />
-
-                {/* Debate Section - Now in Center Bottom */}
-                <div className="row-span-2 bg-[#0a0a0a] border border-white/10 rounded-xl flex flex-col overflow-hidden group w-full h-full shadow-2xl">
-                  <div className="bg-white/5 px-6 py-2.5 border-b border-white/10 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-[#ED1C24] rounded-full animate-pulse shadow-[0_0_10px_rgba(237,28,36,0.8)]" />
-                      <h3 className="text-white font-black uppercase text-[9px] tracking-[0.5em]">Intelligence Debate</h3>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Channel 01</span>
-                      <div className="px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded text-[7px] font-black text-red-500 uppercase tracking-tighter">Live</div>
-                    </div>
-                  </div>
-                  <div className="p-6 xl:p-8 flex-1 flex flex-col justify-center gap-4 xl:gap-6 overflow-y-auto custom-scrollbar">
-                    <h4 className="text-lg xl:text-2xl font-black text-white text-center italic uppercase tracking-tighter leading-tight">
-                      "{insight.debate.topic}"
-                    </h4>
-                    <div className="grid grid-cols-2 gap-8 xl:gap-12 relative w-full">
-                      <div className="absolute top-0 left-1/2 w-[1px] h-full bg-white/10 -translate-x-1/2" />
-                      <div className="space-y-2 xl:space-y-3 group/bull">
-                        <div className="flex items-center gap-3">
-                          <div className="w-1.5 h-4 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]" />
-                          <span className="text-emerald-500 font-black uppercase tracking-[0.3em] text-[8px] xl:text-[9px]">Bull Thesis</span>
-                        </div>
-                        <p className="text-white/60 text-[10px] xl:text-xs leading-relaxed italic group-hover/bull:text-white transition-colors duration-300">
-                          "{insight.debate.bull}"
-                        </p>
-                      </div>
-                      <div className="space-y-2 xl:space-y-3 group/bear">
-                        <div className="flex items-center gap-3 justify-end">
-                          <span className="text-red-500 font-black uppercase tracking-[0.3em] text-[8px] xl:text-[9px]">Bear Thesis</span>
-                          <div className="w-1.5 h-4 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)]" />
-                        </div>
-                        <p className="text-white/60 text-[10px] xl:text-xs leading-relaxed italic text-right group-hover/bear:text-white transition-colors duration-300">
-                          "{insight.debate.bear}"
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
+
+              {/* Center Column - Article / Perspectives tabs */}
+              <ArenaCenterColumn
+                headline={insight.headline}
+                summary={insight.summary}
+                perspectives={insight.perspectives}
+                articleContent={articleContent}
+                articleLink={currentStory?.link}
+              />
 
               {/* Right Column - CTA & Butterfly Effect */}
               <div className="col-span-12 lg:col-span-3 row-span-6 grid grid-rows-6 gap-4">
-                <div className="row-span-2 bg-gradient-to-br from-[#ED1C24] to-red-900 p-6 rounded-xl flex flex-col justify-center shadow-[0_15px_35px_rgba(237,28,36,0.3)] relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-3xl rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
-                  <h3 className="text-white font-black italic text-xl mb-1 uppercase tracking-tighter z-10">Eager to Watch?</h3>
-                  <p className="text-white/70 text-[11px] font-medium mb-4 leading-tight z-10">Get real-time alerts as this story unfolds.</p>
-                  <button className="w-full py-3 bg-white text-black font-black uppercase text-[10px] tracking-[0.3em] rounded-sm flex items-center justify-center gap-3 hover:bg-[#FFD700] hover:scale-[1.02] transition-all duration-300 z-10 shadow-xl">
-                    <Play className="w-4 h-4 fill-current" />
-                    Start Stream
+                {/* Bear Baba vs Bull Bhai — ENHANCED USP DEBATE CARD */}
+                <div className="row-span-2 relative group rounded-xl overflow-hidden border border-[#ED1C24]/30 bg-black/20 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,0,0,0.5)] transition-all duration-500 hover:shadow-[0_0_50px_rgba(237,28,36,0.25)] hover:border-[#ED1C24]/60 z-20">
+
+                  {/* Digital noise background & Grid */}
+                  <div className="absolute inset-0 opacity-20 mix-blend-screen overflow-hidden">
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(237,28,36,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(237,28,36,0.15)_1px,transparent_1px)] bg-[size:15px_15px] animate-[pulse_4s_ease-in-out_infinite]" />
+                  </div>
+
+                  {/* Top Breaking Gradient Bar */}
+                  <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 via-[#FFD700] to-[#ED1C24]" />
+
+                  {/* Header / Live Banner */}
+                  <div className="absolute top-0 inset-x-0 flex items-center justify-between px-3 py-1.5 bg-black/80 border-b border-white/10 z-20 backdrop-blur-sm">
+                    <span className="text-[8px] font-black uppercase tracking-[0.4em] text-[#FFD700]">NEXORA ENGINE</span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 bg-[#ED1C24] rounded-full animate-pulse shadow-[0_0_8px_#ED1C24]" />
+                      <span className="text-[7px] font-black uppercase tracking-[0.5em] text-[#ED1C24] animate-pulse">Live Debate</span>
+                    </div>
+                  </div>
+
+                  {/* Main Characters Area */}
+                  <div className="flex-1 flex flex-col items-center justify-center pt-8 pb-10 relative z-10 h-full">
+                    <div className="flex items-center justify-around w-full px-4 xl:px-8">
+
+                      {/* Bull */}
+                      <div className="relative group/bull flex flex-col items-center">
+                        <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full scale-150 group-hover/bull:bg-emerald-500/40 transition-all duration-500 animate-[pulse_3s_ease-in-out_infinite]" />
+                        <div className="w-10 h-10 xl:w-12 xl:h-12 rounded-lg border border-emerald-500/50 bg-black/80 backdrop-blur-md flex items-center justify-center text-xl xl:text-2xl shadow-[0_0_15px_rgba(16,185,129,0.2)] relative z-10 transition-transform group-hover/bull:scale-110">🐂</div>
+                        <span className="mt-2 text-[8px] xl:text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">Bull Bhai</span>
+                      </div>
+
+                      {/* VS / Soundwaves */}
+                      <div className="flex flex-col items-center justify-center relative z-10 px-2">
+                        <div className="flex items-center gap-[2px] xl:gap-1 mb-1 xl:mb-2">
+                          {[1, 2, 3, 4, 5].map(i => (
+                            <motion.div
+                              key={i}
+                              animate={{ height: ['6px', '24px', '6px'] }}
+                              transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
+                              className="w-[2px] bg-[#FFD700] rounded-full"
+                            />
+                          ))}
+                        </div>
+                        <span className="text-lg xl:text-2xl font-black italic text-[#FFD700] tracking-tighter drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]">VS</span>
+                      </div>
+
+                      {/* Bear */}
+                      <div className="relative group/bear flex flex-col items-center">
+                        <div className="absolute inset-0 bg-[#ED1C24]/20 blur-xl rounded-full scale-150 group-hover/bear:bg-[#ED1C24]/40 transition-all duration-500 animate-[pulse_2.5s_ease-in-out_infinite]" />
+                        <div className="w-10 h-10 xl:w-12 xl:h-12 rounded-lg border border-[#ED1C24]/50 bg-black/80 backdrop-blur-md flex items-center justify-center text-xl xl:text-2xl shadow-[0_0_15px_rgba(237,28,36,0.2)] relative z-10 transition-transform group-hover/bear:scale-110">🐻</div>
+                        <span className="mt-2 text-[8px] xl:text-[9px] font-black uppercase tracking-[0.3em] text-[#ED1C24] drop-shadow-[0_0_5px_rgba(237,28,36,0.5)]">Bear Baba</span>
+                      </div>
+                    </div>
+
+                    <p className="absolute bottom-12 inset-x-0 hidden md:block text-[7px] xl:text-[8px] text-white/40 font-bold uppercase tracking-[0.3em] text-center max-w-[90%] mx-auto leading-relaxed z-10">
+                      AI Agents Clash Over Intelligence
+                    </p>
+                  </div>
+
+                  {/* Absolute Bottom CTA */}
+                  <button
+                    onClick={() => window.location.href = '/nexora'}
+                    className="absolute bottom-0 inset-x-0 h-10 bg-[#ED1C24] hover:bg-[#FFD700] hover:text-black text-white font-black uppercase text-[9px] xl:text-[10px] tracking-[0.4em] flex items-center justify-center gap-2 transition-all duration-300 z-30 group/btn"
+                  >
+                    Enter The Arena <ExternalLink className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
                   </button>
                 </div>
 
-                {/* Butterfly Effect Mapper - Now in Right Column */}
-                <div className="row-span-4 bg-[#0a0a0a] border border-white/10 rounded-xl p-6 flex flex-col group">
+                {/* Butterfly Effect */}
+                <div className="row-span-4 bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)] rounded-xl p-6 flex flex-col relative z-20 group">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <Zap className="text-[#FFD700] w-5 h-5" />
@@ -450,29 +809,27 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* Global CSS for marquee and scrollbars */}
       <style>{`
         @keyframes marquee {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
-        .animate-marquee {
-          animation: marquee 40s linear infinite;
+        @keyframes slide-infinite {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
         }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 2px;
+        @keyframes slide-infinite-reverse {
+          from { transform: translateX(-50%); }
+          to { transform: translateX(0); }
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.02);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(237, 28, 36, 0.3);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(237, 28, 36, 0.5);
-        }
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        .animate-marquee { animation: marquee 40s linear infinite; }
+        .animate-slide-infinite { animation: slide-infinite 40s linear infinite; }
+        .animate-slide-infinite-reverse { animation: slide-infinite-reverse 40s linear infinite; }
+        .custom-scrollbar::-webkit-scrollbar { width: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(237,28,36,0.3); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(237,28,36,0.5); }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
       `}</style>
     </div>
   );

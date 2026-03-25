@@ -7,6 +7,7 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 import os
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 
 load_dotenv()
 
@@ -43,6 +44,107 @@ async def fetch_feed(client, feed_info):
     except Exception as e:
         print(f"Failed to fetch {feed_info['url']}: {e}")
         return []
+
+@app.get("/api/article")
+async def fetch_article(url: str):
+    if not url:
+        return {"content": ""}
+    
+    import re
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.119 Mobile Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-IN,en;q=0.9",
+        "Cache-Control": "no-cache",
+        "Referer": "https://economictimes.indiatimes.com/"
+    }
+    
+    urls_to_try = []
+    if "economictimes.indiatimes.com" in url:
+        mobile_url = url.replace("economictimes.indiatimes.com", "m.economictimes.indiatimes.com")
+        urls_to_try = [mobile_url, url]
+    else:
+        urls_to_try = [url]
+    
+    # Hard patterns to always exclude (UI noise)
+    noise_patterns = re.compile(
+        r'(SHARE THIS NEWS|Close Font Size|Font Size Abc|Remove Ads|'
+        r'Abc Small|Abc Normal|Abc Large|Follow us on|Download The Economic Times|'
+        r'Read More:|Also Read:|Catch all the Business News|Subscribe to The Economic Times)',
+        re.IGNORECASE
+    )
+    
+    async def extract_text(html: str) -> list[str]:
+        soup = BeautifulSoup(html, "html.parser")
+        
+        # Remove non-content elements
+        for tag in soup(["script", "style", "nav", "footer", "header",
+                         "aside", "form", "noscript", "figure", "picture",
+                         "iframe", "button", "svg"]):
+            tag.decompose()
+        
+        # ET selectors in priority order
+        article_div = (
+            soup.find("div", class_="artText") or
+            soup.find("div", {"id": "artText"}) or
+            soup.find("article", class_="artcl") or
+            soup.find("div", class_="article-content") or
+            soup.find("div", class_="Normal") or
+            soup.find("div", class_="artBody") or
+            soup.find("section", class_="artDetailed") or
+            soup.find("div", class_="story__content") or
+            soup.find("main") or
+            soup.find("article")
+        )
+        
+        if not article_div:
+            article_div = soup
+        
+        # Get raw full text of article container
+        raw = article_div.get_text(separator="\n", strip=True)
+        
+        # Split into lines and clean each
+        lines = raw.split("\n")
+        cleaned = []
+        for line in lines:
+            line = line.strip()
+            if not line or len(line) < 40:
+                continue
+            # Skip pure UI noise lines
+            if noise_patterns.search(line):
+                continue
+            # Clean inline noise from mixed lines
+            line = re.sub(r'(SHARE THIS NEWS.*?Large|Remove Ads\s*)', '', line)
+            line = re.sub(r'\s{2,}', ' ', line).strip()
+            if len(line) >= 60:
+                cleaned.append(line)
+        
+        # Deduplicate keeping order
+        seen, unique = set(), []
+        for t in cleaned:
+            key = t[:60].lower()
+            if key not in seen:
+                seen.add(key)
+                unique.append(t)
+        
+        return unique
+    
+    try:
+        async with httpx.AsyncClient(verify=False, follow_redirects=True, timeout=15.0) as client:
+            for attempt_url in urls_to_try:
+                try:
+                    resp = await client.get(attempt_url, headers=headers)
+                    texts = await extract_text(resp.text)
+                    if len(texts) > 2:
+                        return {"content": "\n\n".join(texts[:40])}
+                except Exception as e:
+                    print(f"Attempt failed for {attempt_url}: {e}")
+                    continue
+    except Exception as e:
+        print("Article fetch error:", e)
+    
+    return {"content": ""}
 
 @app.get("/api/headlines")
 async def get_headlines():

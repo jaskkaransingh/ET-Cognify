@@ -24,7 +24,22 @@ export interface ETCognifyInsight {
   };
 }
 
-export const generateInsight = async (topic: string): Promise<ETCognifyInsight> => {
-  // Mock function that currently forces the static fallback
-  throw new Error("API not currently configured. Using semantic fallback for " + topic);
+export const generateInsight = async (topic: string, url?: string): Promise<ETCognifyInsight> => {
+  let articleContent = "";
+  if (url) {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiUrl}/api/article?url=${encodeURIComponent(url)}`);
+      const data = await response.json();
+      if (data && data.content) {
+        articleContent = data.content;
+      }
+    } catch (e) {
+      console.error("Failed to fetch article text", e);
+    }
+  }
+
+  // We throw a tailored error that includes the articleContent on the error object, 
+  // or return a mock structure. Let's just return a mock structure since ArenaPage depends on it.
+  throw Object.assign(new Error("API not currently configured. Using semantic fallback for " + topic), { articleContent });
 };

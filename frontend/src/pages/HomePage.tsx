@@ -256,7 +256,7 @@ export default function HomePage() {
                     style={{ animationDuration: `${Math.max(tickerStories.length * 6, 60)}s` }}
                   >
                     {tickerStories.map((t, idx) => (
-                      <div key={idx} className="flex items-center gap-4 text-[11px] font-bold cursor-crosshair" onClick={() => navigate('/arena')}>
+                      <div key={idx} className="flex items-center gap-4 text-[11px] font-bold cursor-crosshair" onClick={() => navigate('/arena', { state: { story: t } })}>
                         <span className="text-[#ED1C24] font-mono tracking-tighter">[{t.time}]</span>
                         <span className="text-[#00FF41] hover:text-white transition-colors">{t.title}</span>
                         <span className="text-white/10">/</span>
@@ -292,7 +292,7 @@ export default function HomePage() {
 
               {/* Featured Left Hero */}
               {topStory && (
-                <div className="flex-1 bg-[#121212] border border-white/10 rounded-xl p-8 flex flex-col relative overflow-hidden group w-full cursor-pointer shadow-[0_0_50px_rgba(0,0,0,0.5)]" onClick={() => { stopTracking(); startTracking(topStory.id, topStory.title, topStory.tag); navigate('/arena'); }}>
+                <div className="flex-1 bg-[#121212] border border-white/10 rounded-xl p-8 flex flex-col relative overflow-hidden group w-full cursor-pointer shadow-[0_0_50px_rgba(0,0,0,0.5)]" onClick={() => { stopTracking(); startTracking(topStory.id, topStory.title, topStory.tag); navigate('/arena', { state: { story: topStory } }); }}>
 
                   {/* Red Tilted Squares Pattern Background */}
                   <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden rounded-xl opacity-30">
@@ -375,7 +375,7 @@ export default function HomePage() {
               {featuredStories.length > 0 && (
                 <div className="grid grid-cols-2 gap-3 shrink-0">
                   {featuredStories.map(story => (
-                    <div key={story.id} onClick={() => navigate('/arena')} className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 flex flex-col justify-between group cursor-pointer relative overflow-hidden h-48">
+                    <div key={story.id} onClick={() => navigate('/arena', { state: { story } })} className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 flex flex-col justify-between group cursor-pointer relative overflow-hidden h-48">
                       <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-[#FFD700]/5 blur-[60px] rounded-full group-hover:bg-[#FFD700]/10 transition-all duration-700 pointer-events-none" />
 
                       <div className="flex items-center justify-between z-10 border-b border-white/5 pb-2 mb-3">
