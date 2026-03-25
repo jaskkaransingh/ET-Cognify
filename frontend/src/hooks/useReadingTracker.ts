@@ -17,7 +17,6 @@ const MAX_SESSIONS = 200;
 const TOPIC_KEYWORDS: Record<string, string[]> = {
   'RBI': ['rbi', 'repo rate', 'monetary policy', 'interest rate', 'reserve bank'],
   'IT Sector': ['infosys', 'tcs', 'wipro', 'hcl', 'it sector', 'software', 'tech'],
-  'Global Macro': ['fed', 'federal reserve', 'us economy', 'dollar', 'global', 'china'],
   'Mutual Funds': ['mutual fund', 'sip', 'nav', 'amc', 'sebi', 'nfo'],
   'Commodities': ['gold', 'silver', 'crude', 'oil', 'commodity'],
   'Markets': ['nifty', 'sensex', 'bse', 'nse', 'market', 'index', 'rally'],

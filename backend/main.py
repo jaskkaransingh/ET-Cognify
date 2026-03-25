@@ -21,7 +21,7 @@ app.add_middleware(
 )
 
 ET_FEEDS = [
-    {"url": "https://economictimes.indiatimes.com/rssfeedsdefault.cms", "tag": "Top Story"},
+    {"url": "https://economictimes.indiatimes.com/rssfeedsdefault.cms", "tag": "Top News Trending"},
     {"url": "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms", "tag": "Markets"},
     {"url": "https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms", "tag": "Tech"},
     {"url": "https://economictimes.indiatimes.com/industry/rssfeeds/13352306.cms", "tag": "Industry"},
@@ -99,17 +99,17 @@ async def get_headlines():
             
         time_str = "Live Intel"
         try:
-            import time
+            import calendar
             from datetime import datetime
             if hasattr(item, 'published_parsed') and item.published_parsed:
-                dt = datetime.fromtimestamp(time.mktime(item.published_parsed))
+                dt = datetime.fromtimestamp(calendar.timegm(item.published_parsed))
                 time_str = dt.strftime("%I:%M %p").lstrip('0')
         except:
             pass
             
         formatted_news.append({
             "id": f"{index}_{item.get('title', '')[:5]}",
-            "tag": "Global Macro" if index == 0 else source_tag,
+            "tag": source_tag,
             "title": item.get("title", ""),
             "impact": impact,
             "time": time_str,
