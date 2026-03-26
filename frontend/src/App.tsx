@@ -3,6 +3,7 @@ import HomePage from "./pages/HomePage";
 import ArenaPage from "./pages/ArenaPage";
 import AuthPage from "./pages/AuthPage";
 import DNAPage from "./pages/DNAPage";
+import NexoraPage from "./pages/NexoraPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumBackground from "./components/PremiumBackground";
 import { AuthProvider } from "./lib/AuthContext";
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/arena" element={<ProtectedRoute><ArenaPage /></ProtectedRoute>} />
           <Route path="/dna" element={<ProtectedRoute><DNAPage /></ProtectedRoute>} />
+          <Route path="/nexora" element={<ProtectedRoute><NexoraPage /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
