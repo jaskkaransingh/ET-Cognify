@@ -71,7 +71,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#ED1C24] selection:text-white flex flex-col justify-center items-center relative overflow-hidden">
+    <div className="min-h-screen bg-transparent text-white font-sans selection:bg-[#ED1C24] selection:text-white flex flex-col justify-center items-center relative overflow-hidden">
 
       {/* Background Glows */}
       <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-20">

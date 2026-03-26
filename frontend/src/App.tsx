@@ -4,6 +4,7 @@ import ArenaPage from "./pages/ArenaPage";
 import AuthPage from "./pages/AuthPage";
 import DNAPage from "./pages/DNAPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PremiumBackground from "./components/PremiumBackground";
 import { AuthProvider } from "./lib/AuthContext";
 import { useAuth } from "./lib/AuthContext";
 
@@ -17,6 +18,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <PremiumBackground />
         <Routes>
           <Route path="/auth" element={<AuthRoute />} />
           <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />

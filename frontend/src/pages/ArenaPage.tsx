@@ -9,6 +9,38 @@ import {
 import { generateInsight, ETCognifyInsight, Perspective } from '../services/geminiService';
 import { useReadingTracker, savePerspectiveClick } from '../hooks/useReadingTracker';
 
+// --- Background Decoration ---
+const UnifiedSquares = () => (
+  <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-80">
+    {/* Row 1: Right to Left */}
+    <div className="absolute top-[15vh] left-[-5vw] flex rotate-[-12deg] origin-left">
+      <div className="flex gap-16 animate-slide-infinite w-max pr-16" style={{ animationDuration: '12s' }}>
+        {[...Array(12)].map((_, i) => (
+          <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.5] shadow-[0_0_100px_rgba(237,28,36,0.5)]" />
+        ))}
+      </div>
+      <div className="flex gap-16 animate-slide-infinite w-max pr-16" style={{ animationDuration: '12s' }}>
+        {[...Array(12)].map((_, i) => (
+          <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.5] shadow-[0_0_100px_rgba(237,28,36,0.5)]" />
+        ))}
+      </div>
+    </div>
+    
+    {/* Row 2: Left to Right */}
+    <div className="absolute top-[55vh] right-[-5vw] flex rotate-[-12deg] origin-right">
+      <div className="flex gap-20 animate-slide-right-hero w-max" style={{ animationDuration: '14s' }}>
+        {[...Array(3)].map((_, groupIdx) => (
+          <div key={groupIdx} className="flex gap-20">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.4] shadow-[0_0_100px_rgba(237,28,36,0.4)]" />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 // --- Types ---
 interface ChatMessage {
   role: 'user' | 'bot';
@@ -25,43 +57,8 @@ interface StoryData {
   link: string;
 }
 
-// --- Components ---
 
-const RedSquareBackground = () => (
-  <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-    {/* Base subtle grid */}
-    <div className="absolute inset-0 bg-[linear-gradient(rgba(237,28,36,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(237,28,36,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_0%,black,transparent)]" />
 
-    {/* Red Tilted Squares Pattern Background (Moving in rows) */}
-    <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-100">
-      <div className="absolute top-[10%] left-[-5%] flex rotate-[-15deg] origin-left">
-        <div className="flex gap-12 animate-slide-infinite w-max pr-12">
-          {[...Array(12)].map((_, i) => (
-            <div key={i} className="w-48 h-48 sm:w-80 sm:h-80 shrink-0 bg-[#ED1C24] rounded-tl-[60px] rounded-bl-[60px] opacity-[0.25] shadow-[0_0_80px_rgba(237,28,36,0.5)] backdrop-blur-3xl mix-blend-screen" />
-          ))}
-        </div>
-        <div className="flex gap-12 animate-slide-infinite w-max pr-12">
-          {[...Array(12)].map((_, i) => (
-            <div key={i} className="w-48 h-48 sm:w-80 sm:h-80 shrink-0 bg-[#ED1C24] rounded-tl-[60px] rounded-bl-[60px] opacity-[0.25] shadow-[0_0_80px_rgba(237,28,36,0.5)] backdrop-blur-3xl mix-blend-screen" />
-          ))}
-        </div>
-      </div>
-
-      <div className="absolute bottom-[-20%] left-[-5%] flex rotate-[-15deg] origin-left">
-        <div className="flex gap-16 animate-slide-infinite-reverse w-max pr-16" style={{ transform: 'translateX(-50%)' }}>
-          {[...Array(16)].map((_, i) => (
-            <div key={i} className="w-32 h-32 sm:w-56 sm:h-56 shrink-0 bg-[#ED1C24] rounded-tl-[40px] rounded-bl-[40px] opacity-[0.15] shadow-[0_0_60px_rgba(237,28,36,0.4)] backdrop-blur-3xl mix-blend-screen" />
-          ))}
-        </div>
-        <div className="flex gap-16 animate-slide-infinite-reverse w-max pr-16" style={{ transform: 'translateX(-50%)' }}>
-          {[...Array(16)].map((_, i) => (
-            <div key={i} className="w-32 h-32 sm:w-56 sm:h-56 shrink-0 bg-[#ED1C24] rounded-tl-[40px] rounded-bl-[40px] opacity-[0.15] shadow-[0_0_60px_rgba(237,28,36,0.4)] backdrop-blur-3xl mix-blend-screen" />
-          ))}
-        </div>
-      </div>
-    </div>
-  </div>
-);
 
 const Header = ({ onNext, onDNA }: { onNext: () => void; onDNA: () => void }) => (
   <header className="border-b border-white/10 py-3 px-6 flex justify-between items-center bg-black/80 backdrop-blur-2xl z-50 sticky top-0">
@@ -228,7 +225,8 @@ const RAGChatbot = ({ storyTitle, articleContent }: { storyTitle: string; articl
   const suggestions = ['What is the key impact?', 'Investment angle?', 'Key risks?', 'Sector implications?'];
 
   return (
-    <div className="bg-black/20 backdrop-blur-2xl border border-white/10 rounded-xl flex flex-col relative overflow-hidden h-full z-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+    <div className="bg-transparent border border-white/10 rounded-xl flex flex-col relative overflow-hidden h-full z-20 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+      <UnifiedSquares />
       {/* Header */}
       <div className="bg-white/5 px-4 py-3 border-b border-white/10 flex items-center gap-3 shrink-0">
         <div className="relative">
@@ -446,7 +444,7 @@ const ArenaCenterColumn = ({
 
       <div className={`col-span-12 lg:col-span-6 row-span-6 flex flex-col gap-3 h-full overflow-hidden transition-all duration-500`}>
         {/* Header bar with bigger headline */}
-        <div className="bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)] rounded-xl p-6 shrink-0 relative overflow-hidden z-20">
+        <div className="bg-black/60 backdrop-blur-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-xl p-6 shrink-0 relative overflow-hidden z-20">
           <div className="flex items-start justify-between gap-4 relative z-10">
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-3 mb-6">
@@ -473,8 +471,9 @@ const ArenaCenterColumn = ({
         </div>
 
         {/* Perspectives Container (Takes remaining height) */}
-        <div className="flex-1 overflow-hidden bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)] rounded-xl flex flex-col relative z-20">
-          <div className="px-5 py-4 border-b border-white/5 shrink-0 flex items-center gap-2 flex-wrap bg-white/[0.02]">
+        <div className="flex-1 overflow-hidden bg-transparent border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-xl flex flex-col relative z-20">
+          <UnifiedSquares />
+          <div className="px-5 py-4 border-b border-white/5 shrink-0 flex items-center gap-2 flex-wrap bg-white/[0.02] relative z-20">
             {(Object.keys(perspectives) as Perspective[]).map(p => (
               <button
                 key={p}
@@ -499,7 +498,7 @@ const ArenaCenterColumn = ({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-7">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-7 relative z-20">
             <AnimatePresence mode="wait">
               {activePerspective ? (
                 <motion.div
@@ -661,11 +660,10 @@ export default function App() {
 
   return (
     <div className="h-screen bg-[#050505] text-white font-sans selection:bg-[#ED1C24] selection:text-white flex flex-col overflow-hidden relative">
-      <RedSquareBackground />
       <Header onNext={handleNextNews} onDNA={() => navigate('/dna')} />
       <Seismograph />
 
-      <main className="flex-1 p-3 grid grid-cols-12 grid-rows-6 gap-3 overflow-hidden relative">
+      <main className="flex-1 p-3 grid grid-cols-12 grid-rows-6 gap-3 overflow-hidden relative z-10">
         <AnimatePresence mode="wait">
           {loading ? (
             <motion.div
@@ -711,8 +709,8 @@ export default function App() {
               {/* Right Column - CTA & Butterfly Effect */}
               <div className="col-span-12 lg:col-span-3 row-span-6 grid grid-rows-6 gap-4">
                 {/* Bear Baba vs Bull Bhai — ENHANCED USP DEBATE CARD */}
-                <div className="row-span-2 relative group rounded-xl overflow-hidden border border-[#ED1C24]/30 bg-black/20 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,0,0,0.5)] transition-all duration-500 hover:shadow-[0_0_50px_rgba(237,28,36,0.25)] hover:border-[#ED1C24]/60 z-20">
-
+                <div className="row-span-2 relative group rounded-xl overflow-hidden border border-white/10 bg-transparent shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all duration-500 hover:shadow-[0_0_50px_rgba(237,28,36,0.25)] hover:border-[#ED1C24]/60 z-20">
+                  <UnifiedSquares />
                   {/* Digital noise background & Grid */}
                   <div className="absolute inset-0 opacity-20 mix-blend-screen overflow-hidden">
                     <div className="absolute inset-0 bg-[linear-gradient(rgba(237,28,36,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(237,28,36,0.15)_1px,transparent_1px)] bg-[size:15px_15px] animate-[pulse_4s_ease-in-out_infinite]" />
@@ -774,13 +772,14 @@ export default function App() {
                     onClick={() => window.location.href = '/nexora'}
                     className="absolute bottom-0 inset-x-0 h-10 bg-[#ED1C24] hover:bg-[#FFD700] hover:text-black text-white font-black uppercase text-[9px] xl:text-[10px] tracking-[0.4em] flex items-center justify-center gap-2 transition-all duration-300 z-30 group/btn"
                   >
-                    Enter The Arena <ExternalLink className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
+                    Enter The Debate <ExternalLink className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
                   </button>
                 </div>
 
                 {/* Butterfly Effect */}
-                <div className="row-span-4 bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)] rounded-xl p-6 flex flex-col relative z-20 group">
-                  <div className="flex items-center justify-between mb-6">
+                <div className="row-span-4 bg-transparent border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-xl p-6 flex flex-col relative z-20 group overflow-hidden">
+                  <UnifiedSquares />
+                  <div className="flex items-center justify-between mb-6 relative z-10">
                     <div className="flex items-center gap-3">
                       <Zap className="text-[#FFD700] w-5 h-5" />
                       <h3 className="text-[10px] font-black text-white italic uppercase tracking-[0.3em]">Butterfly Effect</h3>
@@ -789,7 +788,7 @@ export default function App() {
                       <span className="text-[8px] font-black text-[#FFD700] uppercase tracking-widest">{insight.butterflyEffect.trigger}</span>
                     </div>
                   </div>
-                  <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-2 custom-scrollbar relative z-10">
                     <div className="bg-white/5 border border-white/5 p-4 rounded-xl hover:bg-white/10 transition-colors">
                       <h4 className="text-white/30 font-black uppercase text-[8px] tracking-[0.3em] mb-2">Direct Impact</h4>
                       <p className="text-white/90 text-xs font-medium leading-relaxed italic">{insight.butterflyEffect.directImpact}</p>
@@ -810,21 +809,6 @@ export default function App() {
       </main>
 
       <style>{`
-        @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        @keyframes slide-infinite {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-        @keyframes slide-infinite-reverse {
-          from { transform: translateX(-50%); }
-          to { transform: translateX(0); }
-        }
-        .animate-marquee { animation: marquee 40s linear infinite; }
-        .animate-slide-infinite { animation: slide-infinite 40s linear infinite; }
-        .animate-slide-infinite-reverse { animation: slide-infinite-reverse 40s linear infinite; }
         .custom-scrollbar::-webkit-scrollbar { width: 2px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(237,28,36,0.3); border-radius: 10px; }
