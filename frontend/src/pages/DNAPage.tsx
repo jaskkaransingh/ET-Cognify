@@ -182,7 +182,7 @@ export default function DNAPage() {
   const isOnboarding = profile.totalSessions < 5;
 
   return (
-    <div className="h-screen bg-[#050505] text-white font-sans selection:bg-[#ED1C24] selection:text-white flex flex-col overflow-hidden relative">
+    <div className="h-screen bg-transparent text-white font-sans selection:bg-[#ED1C24] selection:text-white flex flex-col overflow-hidden relative">
 
       {/* Header */}
       <header className="border-b border-white/10 py-3 px-6 flex justify-between items-center bg-black/80 backdrop-blur-2xl z-50 sticky top-0 shrink-0">
