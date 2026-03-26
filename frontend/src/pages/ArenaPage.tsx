@@ -8,38 +8,77 @@ import {
 } from 'lucide-react';
 import { generateInsight, ETCognifyInsight, Perspective } from '../services/geminiService';
 import { useReadingTracker, savePerspectiveClick } from '../hooks/useReadingTracker';
+import NexoraCTA from '../components/NexoraCTA';
 
 // --- Background Decoration ---
-const UnifiedSquares = () => (
-  <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-80">
-    {/* Row 1: Right to Left */}
-    <div className="absolute top-[15vh] left-[-5vw] flex rotate-[-12deg] origin-left">
-      <div className="flex gap-16 animate-slide-infinite w-max pr-16" style={{ animationDuration: '12s' }}>
-        {[...Array(12)].map((_, i) => (
-          <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.5] shadow-[0_0_100px_rgba(237,28,36,0.5)]" />
-        ))}
-      </div>
-      <div className="flex gap-16 animate-slide-infinite w-max pr-16" style={{ animationDuration: '12s' }}>
-        {[...Array(12)].map((_, i) => (
-          <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.5] shadow-[0_0_100px_rgba(237,28,36,0.5)]" />
-        ))}
-      </div>
-    </div>
-    
-    {/* Row 2: Left to Right */}
-    <div className="absolute top-[55vh] right-[-5vw] flex rotate-[-12deg] origin-right">
-      <div className="flex gap-20 animate-slide-right-hero w-max" style={{ animationDuration: '14s' }}>
-        {[...Array(3)].map((_, groupIdx) => (
-          <div key={groupIdx} className="flex gap-20">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.4] shadow-[0_0_100px_rgba(237,28,36,0.4)]" />
+const UnifiedSquares = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let animationFrameId: number;
+    let lastX = 0;
+    let lastY = 0;
+
+    const updatePosition = () => {
+      if (containerRef.current && contentRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        // Only update DOM if it actually moved to save paint cycles
+        if (rect.left !== lastX || rect.top !== lastY) {
+          contentRef.current.style.transform = `translate(${-rect.left}px, ${-rect.top}px)`;
+          lastX = rect.left;
+          lastY = rect.top;
+        }
+      }
+      animationFrameId = requestAnimationFrame(updatePosition);
+    };
+
+    animationFrameId = requestAnimationFrame(updatePosition);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-20 mix-blend-screen">
+      <div ref={contentRef} style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        willChange: 'transform'
+      }}>
+        {/* Row 1: Right to Left */}
+        <div className="absolute top-[35vh] left-[-5vw] flex rotate-[-12deg] origin-left">
+          <div className="flex animate-slide-infinite w-max" style={{ animationDuration: '24s' }}>
+            <div className="flex gap-16 pr-16">
+              {[...Array(12)].map((_, i) => (
+                <div key={`g1-${i}`} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.25] shadow-[0_0_40px_rgba(237,28,36,0.3)]" />
+              ))}
+            </div>
+            <div className="flex gap-16 pr-16">
+              {[...Array(12)].map((_, i) => (
+                <div key={`g2-${i}`} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.25] shadow-[0_0_40px_rgba(237,28,36,0.3)]" />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Left to Right */}
+        <div className="absolute top-[55vh] right-[-5vw] flex rotate-[-12deg] origin-right">
+          <div className="flex gap-20 animate-slide-right-hero w-max" style={{ animationDuration: '14s' }}>
+            {[...Array(3)].map((_, groupIdx) => (
+              <div key={groupIdx} className="flex gap-20">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.2] shadow-[0_0_30px_rgba(237,28,36,0.2)]" />
+                ))}
+              </div>
             ))}
           </div>
-        ))}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // --- Types ---
 interface ChatMessage {
@@ -445,6 +484,7 @@ const ArenaCenterColumn = ({
       <div className={`col-span-12 lg:col-span-6 row-span-6 flex flex-col gap-3 h-full overflow-hidden transition-all duration-500`}>
         {/* Header bar with bigger headline */}
         <div className="bg-black/60 backdrop-blur-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-xl p-6 shrink-0 relative overflow-hidden z-20">
+          <UnifiedSquares />
           <div className="flex items-start justify-between gap-4 relative z-10">
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-3 mb-6">
@@ -708,76 +748,13 @@ export default function App() {
 
               {/* Right Column - CTA & Butterfly Effect */}
               <div className="col-span-12 lg:col-span-3 row-span-6 grid grid-rows-6 gap-4">
-                {/* Bear Baba vs Bull Bhai — ENHANCED USP DEBATE CARD */}
-                <div className="row-span-2 relative group rounded-xl overflow-hidden border border-white/10 bg-transparent shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all duration-500 hover:shadow-[0_0_50px_rgba(237,28,36,0.25)] hover:border-[#ED1C24]/60 z-20">
-                  <UnifiedSquares />
-                  {/* Digital noise background & Grid */}
-                  <div className="absolute inset-0 opacity-20 mix-blend-screen overflow-hidden">
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(237,28,36,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(237,28,36,0.15)_1px,transparent_1px)] bg-[size:15px_15px] animate-[pulse_4s_ease-in-out_infinite]" />
-                  </div>
-
-                  {/* Top Breaking Gradient Bar */}
-                  <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 via-[#FFD700] to-[#ED1C24]" />
-
-                  {/* Header / Live Banner */}
-                  <div className="absolute top-0 inset-x-0 flex items-center justify-between px-3 py-1.5 bg-black/80 border-b border-white/10 z-20 backdrop-blur-sm">
-                    <span className="text-[8px] font-black uppercase tracking-[0.4em] text-[#FFD700]">NEXORA ENGINE</span>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 bg-[#ED1C24] rounded-full animate-pulse shadow-[0_0_8px_#ED1C24]" />
-                      <span className="text-[7px] font-black uppercase tracking-[0.5em] text-[#ED1C24] animate-pulse">Live Debate</span>
-                    </div>
-                  </div>
-
-                  {/* Main Characters Area */}
-                  <div className="flex-1 flex flex-col items-center justify-center pt-8 pb-10 relative z-10 h-full">
-                    <div className="flex items-center justify-around w-full px-4 xl:px-8">
-
-                      {/* Bull */}
-                      <div className="relative group/bull flex flex-col items-center">
-                        <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full scale-150 group-hover/bull:bg-emerald-500/40 transition-all duration-500 animate-[pulse_3s_ease-in-out_infinite]" />
-                        <div className="w-10 h-10 xl:w-12 xl:h-12 rounded-lg border border-emerald-500/50 bg-black/80 backdrop-blur-md flex items-center justify-center text-xl xl:text-2xl shadow-[0_0_15px_rgba(16,185,129,0.2)] relative z-10 transition-transform group-hover/bull:scale-110">🐂</div>
-                        <span className="mt-2 text-[8px] xl:text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">Bull Bhai</span>
-                      </div>
-
-                      {/* VS / Soundwaves */}
-                      <div className="flex flex-col items-center justify-center relative z-10 px-2">
-                        <div className="flex items-center gap-[2px] xl:gap-1 mb-1 xl:mb-2">
-                          {[1, 2, 3, 4, 5].map(i => (
-                            <motion.div
-                              key={i}
-                              animate={{ height: ['6px', '24px', '6px'] }}
-                              transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
-                              className="w-[2px] bg-[#FFD700] rounded-full"
-                            />
-                          ))}
-                        </div>
-                        <span className="text-lg xl:text-2xl font-black italic text-[#FFD700] tracking-tighter drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]">VS</span>
-                      </div>
-
-                      {/* Bear */}
-                      <div className="relative group/bear flex flex-col items-center">
-                        <div className="absolute inset-0 bg-[#ED1C24]/20 blur-xl rounded-full scale-150 group-hover/bear:bg-[#ED1C24]/40 transition-all duration-500 animate-[pulse_2.5s_ease-in-out_infinite]" />
-                        <div className="w-10 h-10 xl:w-12 xl:h-12 rounded-lg border border-[#ED1C24]/50 bg-black/80 backdrop-blur-md flex items-center justify-center text-xl xl:text-2xl shadow-[0_0_15px_rgba(237,28,36,0.2)] relative z-10 transition-transform group-hover/bear:scale-110">🐻</div>
-                        <span className="mt-2 text-[8px] xl:text-[9px] font-black uppercase tracking-[0.3em] text-[#ED1C24] drop-shadow-[0_0_5px_rgba(237,28,36,0.5)]">Bear Baba</span>
-                      </div>
-                    </div>
-
-                    <p className="absolute bottom-12 inset-x-0 hidden md:block text-[7px] xl:text-[8px] text-white/40 font-bold uppercase tracking-[0.3em] text-center max-w-[90%] mx-auto leading-relaxed z-10">
-                      AI Agents Clash Over Intelligence
-                    </p>
-                  </div>
-
-                  {/* Absolute Bottom CTA */}
-                  <button
-                    onClick={() => window.location.href = '/nexora'}
-                    className="absolute bottom-0 inset-x-0 h-10 bg-[#ED1C24] hover:bg-[#FFD700] hover:text-black text-white font-black uppercase text-[9px] xl:text-[10px] tracking-[0.4em] flex items-center justify-center gap-2 transition-all duration-300 z-30 group/btn"
-                  >
-                    Enter The Debate <ExternalLink className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
-                  </button>
+                {/* Nexora Debate System */}
+                <div className="row-span-3 relative group rounded-xl overflow-hidden z-20">
+                  <NexoraCTA topic={insight.headline} />
                 </div>
 
                 {/* Butterfly Effect */}
-                <div className="row-span-4 bg-transparent border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-xl p-6 flex flex-col relative z-20 group overflow-hidden">
+                <div className="row-span-3 bg-transparent border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-xl p-6 flex flex-col relative z-20 group overflow-hidden">
                   <UnifiedSquares />
                   <div className="flex items-center justify-between mb-6 relative z-10">
                     <div className="flex items-center gap-3">
