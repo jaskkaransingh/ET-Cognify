@@ -199,7 +199,7 @@ const Seismograph = () => {
 };
 
 // --- RAG Chatbot Component ---
-const RAGChatbot = ({ storyTitle, articleContent }: { storyTitle: string; articleContent: string }) => {
+const RAGChatbot = ({ storyTitle, articleLink }: { storyTitle: string; articleLink?: string }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'bot',
@@ -214,32 +214,27 @@ const RAGChatbot = ({ storyTitle, articleContent }: { storyTitle: string; articl
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(scrollToBottom, [messages]);
 
-  const generateContextualResponse = (query: string): string => {
-    const q = query.toLowerCase();
-    // Pull key phrases from article content (RAG-like sim)
-    const contextSnippet = articleContent ? articleContent.slice(0, 300) : '';
+  // Auto-ingest article into Vector Database when it changes
+  useEffect(() => {
+    if (!articleLink) return;
+    const mockUserId = "et_premium_user_01";
+    fetch('http://localhost:8000/api/rag/ingest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: articleLink, user_id: mockUserId })
+    }).then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          console.log("[RAG] Ingested successfully:", articleLink);
+          if (data.insight_message) {
+            console.log("[RAG] Insight generated:", data.insight_message);
+          }
+        }
+      })
+      .catch(err => console.error("[RAG] Ingest error:", err));
+  }, [articleLink]);
 
-    if (q.includes('impact') || q.includes('effect') || q.includes('affect')) {
-      return `Based on the article, the key impact areas include: ${contextSnippet ? '"' + contextSnippet.split('.')[0] + '."' : 'the market story requires real-time data to identify specific ripple effects. I can see this involves ' + storyTitle.split(' ').slice(0, 5).join(' ') + '...'}. This appears to be a ${q.includes('market') ? 'market-moving' : 'significant'} development worth tracking closely.`;
-    }
-    if (q.includes('invest') || q.includes('buy') || q.includes('sell') || q.includes('portfolio')) {
-      return `From an investment standpoint, articles like "${storyTitle}" suggest watching for: sector rotation into related plays, derivative positioning around the core event, and any regulatory announcements that might follow. Always pair RAG context with your own financial advisor's view before acting.`;
-    }
-    if (q.includes('summar') || q.includes('explain') || q.includes('what')) {
-      return contextSnippet
-        ? `Here's what the article says: "${contextSnippet.trim()}" — This is the opening context. Want me to clarify any specific aspect or discuss the market angle?`
-        : `The article covers: ${storyTitle}. This story touches on ${storyTitle.split(' ').slice(0, 4).join(', ')}. Want me to break down the bull case, bear case, or sector implications?`;
-    }
-    if (q.includes('risk')) {
-      return `Key risks associated with this story: regulatory uncertainty, macro headwinds if global sentiment shifts, and liquidity concerns if retail participation drops. The headline suggests near-term volatility is possible — manage position sizing accordingly.`;
-    }
-    if (q.includes('sector') || q.includes('industry')) {
-      return `This story is most directly tied to the ${storyTitle.includes('RBI') || storyTitle.includes('Bank') ? 'Banking & NBFC' : storyTitle.includes('Tech') || storyTitle.includes('AI') ? 'Technology' : 'Broader Market'} sector. Look at adjacent plays in supply chains and regulatory beneficiaries for additional alpha.`;
-    }
-    return `That's a sharp angle on this story. Based on the headline context — "${storyTitle.slice(0, 60)}..." — the intelligence I can surface suggests monitoring sector signals closely. Try asking me about: impact, investment angle, key risks, or sector implications.`;
-  };
-
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
     const userMsg: ChatMessage = {
       role: 'user',
@@ -250,15 +245,31 @@ const RAGChatbot = ({ storyTitle, articleContent }: { storyTitle: string; articl
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
+    try {
+      const res = await fetch('http://localhost:8000/api/rag/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: userMsg.content,
+          article_id: articleLink
+        })
+      });
+      const data = await res.json();
       const botReply: ChatMessage = {
         role: 'bot',
-        content: generateContextualResponse(userMsg.content),
+        content: data.answer || "I'm having trouble analyzing this right now.",
         timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, botReply]);
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role: 'bot',
+        content: "Error connecting to the backend intelligence engine. Is it running?",
+        timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 900 + Math.random() * 600);
+    }
   };
 
   const suggestions = ['What is the key impact?', 'Investment angle?', 'Key risks?', 'Sector implications?'];
@@ -733,7 +744,7 @@ export default function App() {
               <div className="col-span-12 lg:col-span-3 row-span-6">
                 <RAGChatbot
                   storyTitle={currentStory?.title || insight.headline}
-                  articleContent={articleContent}
+                  articleLink={currentStory?.link}
                 />
               </div>
 
