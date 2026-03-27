@@ -5,18 +5,18 @@ import json
 
 load_dotenv()
 
-# We use the openai package to access OpenRouter since it is OpenAI API compatible
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "meta-llama/llama-3.1-8b-instruct:free")
+# We use the openai package to access Gemini utilizing their OpenAI API compatible endpoint
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyCeAPXD9O_FAazzVu-9G1O0Zitra5ffVhA")
+LLM_MODEL = "gemini-2.5-flash"
 
 client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    api_key=GEMINI_API_KEY,
 )
 
 def generate_rag_answer(question: str, context: str) -> str:
     """Uses LLM to answer a question based on retrieved context."""
-    if not OPENROUTER_API_KEY:
+    if not GEMINI_API_KEY:
         return "Warning: OPENROUTER_API_KEY not configured. Cannot generate response."
 
     prompt = f"Context information is below.\n---------------------\n{context}\n---------------------\nGiven the context information and not prior knowledge, answer the query.\nQuery: {question}\nAnswer: "
@@ -35,7 +35,7 @@ def generate_rag_answer(question: str, context: str) -> str:
 
 def extract_metadata_from_text(text: str) -> dict:
     """Uses LLM to extract primary category and topics/keywords from article text."""
-    if not OPENROUTER_API_KEY:
+    if not GEMINI_API_KEY:
         return {"category": "general", "topics": ["news"]}
 
     # Truncate text to avoid massive token limits just for metadata extraction
@@ -71,7 +71,7 @@ Article Text:
 
 def generate_insight_message(user_id: str, user_profile: dict, article_category: str, article_topics: list) -> str:
     """Uses LLM to generate a personalized insight message comparing the article to the user's history."""
-    if not OPENROUTER_API_KEY:
+    if not GEMINI_API_KEY:
         return f"Hi {user_id}, we saved a new article in {article_category} for you!"
 
     profile_json = json.dumps({

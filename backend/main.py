@@ -7,16 +7,21 @@ import httpx
 import asyncio
 from datetime import datetime
 from email.utils import parsedate_to_datetime
+import sys
 import os
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
+
+# Add rag_engine to PYTHONPATH so its internal module references work seamlessly
+sys.path.append(os.path.join(os.path.dirname(__file__), "rag_engine"))
+from api.routes import router as rag_router
 
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("VITE_GEMINI_API_KEY", "AIzaSyCeAPXD9O_FAazzVu-9G1O0Zitra5ffVhA"))
 
 app = FastAPI()
-
+app.include_router(rag_router, prefix="/api/rag")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
