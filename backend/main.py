@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
 import feedparser
 import httpx
 import asyncio
@@ -10,6 +12,8 @@ from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 
 load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("VITE_GEMINI_API_KEY", "AIzaSyCeAPXD9O_FAazzVu-9G1O0Zitra5ffVhA"))
 
 app = FastAPI()
 
@@ -145,6 +149,55 @@ async def fetch_article(url: str):
         print("Article fetch error:", e)
     
     return {"content": ""}
+
+# ─── Debate models ───────────────────────────────────────────────────────────
+
+class DebateHistoryItem(BaseModel):
+    agent: str
+    text: str
+
+class DebateRequest(BaseModel):
+    agentId: str
+    topic: str
+    language: str
+    history: List[DebateHistoryItem] = []
+    systemInstruction: str
+    agentName: str
+
+@app.post("/api/debate")
+async def generate_debate(req: DebateRequest):
+    """Generate a single debate turn using Google Gemini."""
+    # Build the user prompt
+    prompt = f'Debate Topic: "{req.topic}"\n\n'
+    if req.history:
+        prompt += "Previous turns:\n"
+        for msg in req.history:
+            name = "Bull Bhai" if msg.agent == "bull" else "Bear Baba"
+            prompt += f"{name}: {msg.text}\n"
+        prompt += f"\nNow, generate your response as {req.agentName}."
+    else:
+        prompt += f"You are starting the debate. Make your opening statement as {req.agentName}."
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}",
+                headers={"Content-Type": "application/json"},
+                json={
+                    "system_instruction": {"parts": [{"text": req.systemInstruction}]},
+                    "contents": [{"parts": [{"text": prompt}]}],
+                },
+            )
+        data = resp.json()
+        if resp.status_code != 200:
+            print(f"[Debate] Gemini error: {data}")
+            return {"text": f"(Debate engine error: {data.get('error', {}).get('message', 'unknown')})"}
+        text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return {"text": text}
+    except Exception as e:
+        print(f"[Debate] Exception: {e}")
+        return {"text": "(Debate generation failed. Check backend logs.)"}
+
 
 @app.get("/api/headlines")
 async def get_headlines():
