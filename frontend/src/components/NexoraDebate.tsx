@@ -233,23 +233,30 @@ export default function NexoraDebate({ topic, initialLanguage = 'English', autoS
       <div className="flex-1 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-white/10 relative z-10 overflow-hidden">
         
         {/* Bull Section */}
-        <div className={`flex-1 flex flex-col transition-colors duration-500 overflow-hidden relative ${activeSpeaker === 'bull' ? 'bg-emerald-500/5' : 'bg-transparent'}`}>
+        <div className={`flex-1 flex flex-col transition-colors duration-500 overflow-hidden relative ${activeSpeaker === 'bull' ? 'bg-emerald-950/20' : 'bg-transparent'}`}>
           <div className="p-4 flex flex-col shrink-0">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400">Bull Bhai</span>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400">Bull Node // Active</span>
               <div className={`w-1.5 h-1.5 rounded-full ${activeSpeaker === 'bull' ? 'bg-emerald-500 animate-pulse' : 'bg-transparent'}`} />
             </div>
-            <div className={`w-12 h-12 rounded-lg border flex items-center justify-center text-2xl transition-all ${activeSpeaker === 'bull' ? 'border-emerald-500 bg-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.3)] scale-110' : 'border-white/10 bg-white/5 grayscale'}`}>
-              🐂
+            <div className="relative w-14 h-14 flex items-center justify-center">
+               <div className={`absolute inset-0 rounded-full border-2 border-dashed transition-all duration-1000 ${activeSpeaker === 'bull' ? 'border-emerald-500 animate-[spin_4s_linear_infinite] opacity-100 scale-110' : 'border-white/20 opacity-30'}`} />
+               <div className={`absolute inset-1.5 rounded-full border border-emerald-500/50 transition-all duration-500 ${activeSpeaker === 'bull' ? 'bg-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-transparent'}`} />
+               <div className={`absolute inset-3.5 rounded-full bg-emerald-500 transition-all duration-300 ${activeSpeaker === 'bull' ? 'opacity-90 scale-100 shadow-[0_0_15px_rgba(16,185,129,0.8)]' : 'opacity-20 scale-75 grayscale'}`} />
+               {activeSpeaker === 'bull' && <div className="absolute inset-0 rounded-full border border-emerald-300/50 animate-ping opacity-30 delay-150" />}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4" ref={bullScrollRef}>
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4" ref={bullScrollRef}>
             {transcripts.bull.map((msg, i) => (
-              <div key={i} className={`mb-3 text-sm font-medium leading-relaxed ${i === transcripts.bull.length - 1 ? 'text-white' : 'text-white/40'}`}>
-                {msg}
+              <div key={i} className={`mb-3 text-sm font-medium leading-relaxed ${i === transcripts.bull.length - 1 ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'text-white/40'}`}>
+                {msg === 'Thinking...' ? (
+                   <span className="flex items-center gap-2 text-emerald-400 font-mono text-[10px] uppercase tracking-widest animate-pulse">
+                     <span className="w-1 h-1 bg-emerald-400 rounded-full" /> SYNTHESIZING DATA...
+                   </span>
+                ) : msg}
               </div>
             ))}
-            {transcripts.bull.length === 0 && <p className="text-[10px] text-white/20 uppercase tracking-widest italic">Awaiting transmission...</p>}
+            {transcripts.bull.length === 0 && <p className="text-[10px] text-white/20 uppercase tracking-widest italic font-mono">Awaiting initialization...</p>}
           </div>
         </div>
 
@@ -259,23 +266,30 @@ export default function NexoraDebate({ topic, initialLanguage = 'English', autoS
         </div>
 
         {/* Bear Section */}
-        <div className={`flex-1 flex flex-col transition-colors duration-500 overflow-hidden relative ${activeSpeaker === 'bear' ? 'bg-[#ED1C24]/5' : 'bg-transparent'}`}>
+        <div className={`flex-1 flex flex-col transition-colors duration-500 overflow-hidden relative ${activeSpeaker === 'bear' ? 'bg-[#ED1C24]/10' : 'bg-transparent'}`}>
           <div className="p-4 flex flex-col shrink-0 items-end">
-            <div className="flex items-center justify-between w-full mb-2 flex-row-reverse">
-              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#ED1C24]">Bear Baba</span>
+            <div className="flex items-center justify-between w-full mb-4 flex-row-reverse">
+              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#ED1C24]">Bear Node // Active</span>
               <div className={`w-1.5 h-1.5 rounded-full ${activeSpeaker === 'bear' ? 'bg-[#ED1C24] animate-pulse' : 'bg-transparent'}`} />
             </div>
-            <div className={`w-12 h-12 rounded-lg border flex items-center justify-center text-2xl transition-all ${activeSpeaker === 'bear' ? 'border-[#ED1C24] bg-[#ED1C24]/20 shadow-[0_0_20px_rgba(237,28,36,0.3)] scale-110' : 'border-white/10 bg-white/5 grayscale'}`}>
-              🐻
+            <div className="relative w-14 h-14 flex items-center justify-center">
+               <div className={`absolute inset-0 rounded-full border-2 border-dashed transition-all duration-700 ${activeSpeaker === 'bear' ? 'border-[#ED1C24] animate-[spin_3s_linear_reverse_infinite] opacity-100 scale-110' : 'border-white/20 opacity-30'}`} />
+               <div className={`absolute inset-1.5 rounded-full border border-[#ED1C24]/50 transition-all duration-500 ${activeSpeaker === 'bear' ? 'bg-[#ED1C24]/20 shadow-[0_0_30px_rgba(237,28,36,0.5)] animate-pulse' : 'bg-transparent'}`} />
+               <div className={`absolute inset-3.5 rounded-full bg-[#ED1C24] transition-all duration-300 ${activeSpeaker === 'bear' ? 'opacity-90 scale-100 shadow-[0_0_15px_rgba(237,28,36,0.8)]' : 'opacity-20 scale-75 grayscale'}`} />
+               {activeSpeaker === 'bear' && <div className="absolute inset-0 rounded-full border border-[#ED1C24]/50 animate-ping opacity-30 delay-150" />}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 text-right" ref={bearScrollRef}>
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4 text-right" ref={bearScrollRef}>
              {transcripts.bear.map((msg, i) => (
-              <div key={i} className={`mb-3 text-sm font-medium leading-relaxed ${i === transcripts.bear.length - 1 ? 'text-white' : 'text-white/40'}`}>
-                {msg}
+              <div key={i} className={`mb-3 text-sm font-medium leading-relaxed ${i === transcripts.bear.length - 1 ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'text-white/40'}`}>
+                {msg === 'Thinking...' ? (
+                   <span className="flex items-center justify-end gap-2 text-[#ED1C24] font-mono text-[10px] uppercase tracking-widest animate-pulse">
+                     ISOLATING RISKS... <span className="w-1 h-1 bg-[#ED1C24] rounded-full" />
+                   </span>
+                ) : msg}
               </div>
             ))}
-            {transcripts.bear.length === 0 && <p className="text-[10px] text-white/20 uppercase tracking-widest italic">Awaiting transmission...</p>}
+            {transcripts.bear.length === 0 && <p className="text-[10px] text-white/20 uppercase tracking-widest italic font-mono">Awaiting initialization...</p>}
           </div>
         </div>
 

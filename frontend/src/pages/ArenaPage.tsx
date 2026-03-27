@@ -776,17 +776,50 @@ export default function App() {
                       <span className="text-[8px] font-black text-[#FFD700] uppercase tracking-widest">{insight.butterflyEffect.trigger}</span>
                     </div>
                   </div>
-                  <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-2 custom-scrollbar relative z-10">
-                    <div className="bg-white/5 border border-white/5 p-4 rounded-xl hover:bg-white/10 transition-colors">
-                      <h4 className="text-white/30 font-black uppercase text-[8px] tracking-[0.3em] mb-2">Direct Impact</h4>
-                      <p className="text-white/90 text-xs font-medium leading-relaxed italic">{insight.butterflyEffect.directImpact}</p>
-                    </div>
-                    {insight.butterflyEffect.personalRipples.map((ripple, idx) => (
-                      <div key={idx} className="bg-white/5 border border-white/5 p-4 rounded-xl hover:bg-white/10 transition-colors group/ripple">
-                        <h4 className="text-white/30 font-black uppercase text-[8px] tracking-[0.3em] mb-2 group-hover/ripple:text-[#FFD700] transition-colors">{ripple.label}</h4>
-                        <p className="text-white font-bold text-sm mb-1">{ripple.value}</p>
-                        {ripple.cost && <span className="text-[#ED1C24] font-black text-[9px] tracking-widest">COST: {ripple.cost}</span>}
+                  <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-4 custom-scrollbar relative z-10 pl-6 border-l border-white/10 ml-4 border-dashed py-2">
+                    
+                    {/* Origin Node / Direct Impact */}
+                    <motion.div 
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="relative group/node"
+                    >
+                      <div className="absolute -left-[30px] top-4 w-3 h-3 rounded-full bg-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.8)] z-20 flex items-center justify-center">
+                        <div className="w-1 h-1 bg-black rounded-full animate-ping" />
                       </div>
+                      <div className="absolute -left-[24px] top-5 w-6 h-[1px] bg-[#FFD700]/50" />
+                      <div className="bg-black/50 border border-[#FFD700]/30 p-4 rounded-lg relative overflow-hidden group-hover/node:bg-[#FFD700]/5 transition-colors">
+                        <div className="absolute top-0 right-0 px-2 py-0.5 bg-[#FFD700]/10 border-b border-l border-[#FFD700]/20 text-[7px] text-[#FFD700] font-black uppercase tracking-widest">
+                          Ground Zero
+                        </div>
+                        <h4 className="text-white/40 font-black uppercase text-[8px] tracking-[0.3em] mb-2 mt-1">Direct Impact</h4>
+                        <p className="text-white/90 text-xs font-medium leading-relaxed">{insight.butterflyEffect.directImpact}</p>
+                      </div>
+                    </motion.div>
+
+                    {/* Ripples */}
+                    {insight.butterflyEffect.personalRipples.map((ripple, idx) => (
+                      <motion.div 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2 + (idx * 0.1) }}
+                        key={idx} 
+                        className="relative group/node"
+                      >
+                         <div className="absolute -left-[28px] top-4 w-2 h-2 rounded-full border border-white/50 bg-black z-20 group-hover/node:bg-white group-hover/node:border-white group-hover/node:scale-125 transition-all duration-300" />
+                         <div className="absolute -left-[26px] top-5 w-6 h-[1px] bg-white/20 group-hover/node:bg-white/50 group-hover/node:w-8 transition-all duration-300" />
+                         
+                         <div className="bg-white/5 border border-white/10 p-3.5 rounded-lg group-hover/node:bg-white/10 transition-all group-hover/node:translate-x-2 group-hover/node:border-white/30">
+                            <div className="flex justify-between items-start mb-1.5 cursor-default">
+                              <span className="text-[8px] font-black uppercase text-emerald-400 tracking-[0.2em] bg-emerald-400/10 px-1.5 py-0.5 rounded-sm">RIPPLE {idx + 1} // {ripple.label}</span>
+                              {ripple.cost && (
+                                <span className="text-[9px] font-black text-[#FFD700] bg-[#FFD700]/10 px-1.5 py-0.5 rounded-sm border border-[#FFD700]/20">{ripple.cost}</span>
+                              )}
+                            </div>
+                            <p className="text-white/70 text-xs font-medium leading-relaxed">{ripple.value}</p>
+                         </div>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
