@@ -1,15 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-let ai: any = null;
-
-function getAiClient() {
-  if (!ai) {
-    if (!API_KEY) throw new Error("VITE_GEMINI_API_KEY is not configured.");
-    ai = new GoogleGenAI({ apiKey: API_KEY });
-  }
-  return ai;
-}
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
   'English': 'You must respond entirely in English.',
@@ -21,7 +13,7 @@ const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
 const getLanguageInstruction = (language: string): string =>
   LANGUAGE_INSTRUCTIONS[language] || `You must respond entirely in ${language}.`;
 
-const AGENT_PROFILES: Record<string, any> = {
+const AGENT_PROFILES: Record<string, { name: string; systemInstruction: (lang: string) => string }> = {
   bull: {
     name: 'Bull Bhai',
     systemInstruction: (language: string) => `You are Bull Bhai, an extremely optimistic, enthusiastic, and bullish debate agent.
@@ -39,7 +31,7 @@ Your tone: Skeptical, cautionary, dismissive.
 Your goal: Strongly attack the given topic and counter any optimistic arguments from your opponent (Bull Bhai).
 ${getLanguageInstruction(language)}
 STRICT RULES: Keep your response STRICTLY UNDER 120 WORDS. You MUST finish your thought naturally before running out of words. Do not let your sentence trail off. No markdown, asterisks, bullet points, or formatting. Pure spoken text only.`,
-  }
+  },
 };
 
 export interface DebateHistoryItem {
@@ -48,12 +40,7 @@ export interface DebateHistoryItem {
 }
 
 /**
- * Generate a response for an agent in the debate
- * @param agentId - 'bull' or 'bear'
- * @param topic - The debate topic
- * @param language - The language to speak in
- * @param history - Previous messages in the debate
- * @returns generated text string
+ * Generate a response for an agent in the debate using @google/genai (Ported from Nexora)
  */
 export async function generateDebateResponse(
   agentId: string,
@@ -62,15 +49,16 @@ export async function generateDebateResponse(
   history: DebateHistoryItem[]
 ): Promise<string> {
   const profile = AGENT_PROFILES[agentId];
+  if (!profile) return `(Unknown agent: ${agentId})`;
 
   try {
-    console.log(`[${profile.name}] Generating response...`);
-
-    // Build conversation history
+    console.log(`[${profile.name}] Generating response natively via Nexora SDK route...`);
+    
+    // Build conversation history matching Nexora format exactly
     let promptText = `Debate Topic: "${topic}"\n\n`;
     if (history.length > 0) {
       promptText += `Previous turns:\n`;
-      history.forEach((msg) => {
+      history.forEach(msg => {
         const speakerName = AGENT_PROFILES[msg.agent]?.name || msg.agent;
         promptText += `${speakerName}: ${msg.text}\n`;
       });
@@ -81,7 +69,7 @@ export async function generateDebateResponse(
 
     promptText += `\n\nCRITICAL INSTRUCTION: ${getLanguageInstruction(language)}`;
 
-    const requestConfig: any = {
+    const requestConfig = {
       model: 'gemini-2.5-flash-lite',
       contents: [{
         role: 'user',
@@ -90,15 +78,14 @@ export async function generateDebateResponse(
       systemInstruction: profile.systemInstruction(language),
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 250, // Keep responses short
+        maxOutputTokens: 250,
       }
     };
 
-    const client = getAiClient();
-    const response = await client.models.generateContent(requestConfig);
+    const response = await ai.models.generateContent(requestConfig);
     const text = response.text?.trim() || '';
-
-    console.log(`[${profile.name}] Generated:`, text);
+    
+    console.log(`[${profile.name}] Generated:`, text.slice(0, 80));
     return text;
   } catch (error) {
     console.error(`[${profile.name}] Error generating response:`, error);
