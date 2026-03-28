@@ -8,7 +8,7 @@ export default function ProtectedRoute({ children }: { children: JSX.Element }) 
 
   if (loading) {
     return (
-      <div className="h-screen bg-[#050505] flex items-center justify-center">
+      <div className="h-[100dvh] bg-[#050505] flex items-center justify-center">
         <div className="relative">
           <Loader2 className="w-12 h-12 text-[#ED1C24] animate-spin" />
           <div className="absolute inset-0 bg-[#ED1C24]/20 blur-xl rounded-full animate-pulse" />
