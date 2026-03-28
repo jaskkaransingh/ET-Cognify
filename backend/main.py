@@ -18,7 +18,7 @@ from api.routes import router as rag_router
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("VITE_GEMINI_API_KEY", "AIzaSyCeAPXD9O_FAazzVu-9G1O0Zitra5ffVhA"))
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("VITE_GEMINI_API_KEY")
 
 app = FastAPI()
 app.include_router(rag_router, prefix="/api/rag")
@@ -172,6 +172,9 @@ class DebateRequest(BaseModel):
 @app.post("/api/debate")
 async def generate_debate(req: DebateRequest):
     """Generate a single debate turn using Google Gemini."""
+    if not GEMINI_API_KEY:
+        return {"text": "(Debate engine is not configured. Set GEMINI_API_KEY on the backend.)"}
+
     # Build the user prompt
     prompt = f'Debate Topic: "{req.topic}"\n\n'
     if req.history:
