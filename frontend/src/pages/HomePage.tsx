@@ -158,7 +158,7 @@ export default function HomePage() {
   const tickerStories = headlines.slice(0, 10); // Enforce only the absolute latest news
 
   return (
-    <div className="h-screen bg-[#050505] text-white font-sans selection:bg-[#ED1C24] selection:text-white flex flex-col overflow-hidden relative z-0">
+    <div className="h-screen bg-transparent text-white font-sans selection:bg-[#ED1C24] selection:text-white flex flex-col overflow-hidden relative">
       <header className="border-b border-white/10 py-3 px-6 flex justify-between items-center bg-black/80 backdrop-blur-2xl z-50 sticky top-0 shrink-0">
         <div className="flex items-center gap-4">
           <div className="relative cursor-pointer" onClick={() => window.location.reload()}>
@@ -256,7 +256,7 @@ export default function HomePage() {
                     style={{ animationDuration: `${Math.max(tickerStories.length * 6, 60)}s` }}
                   >
                     {tickerStories.map((t, idx) => (
-                      <div key={idx} className="flex items-center gap-4 text-[11px] font-bold cursor-crosshair" onClick={() => navigate('/arena')}>
+                      <div key={idx} className="flex items-center gap-4 text-[11px] font-bold cursor-crosshair" onClick={() => navigate('/arena', { state: { story: t } })}>
                         <span className="text-[#ED1C24] font-mono tracking-tighter">[{t.time}]</span>
                         <span className="text-[#00FF41] hover:text-white transition-colors">{t.title}</span>
                         <span className="text-white/10">/</span>
@@ -292,40 +292,42 @@ export default function HomePage() {
 
               {/* Featured Left Hero */}
               {topStory && (
-                <div className="flex-1 bg-[#121212] border border-white/10 rounded-xl p-8 flex flex-col relative overflow-hidden group w-full cursor-pointer shadow-[0_0_50px_rgba(0,0,0,0.5)]" onClick={() => { stopTracking(); startTracking(topStory.id, topStory.title, topStory.tag); navigate('/arena'); }}>
+                <div className="flex-1 bg-[#121212] border border-white/10 rounded-xl p-8 flex flex-col relative overflow-hidden group w-full cursor-pointer shadow-[0_0_50px_rgba(0,0,0,0.5)]" onClick={() => { stopTracking(); startTracking(topStory.id, topStory.title, topStory.tag); navigate('/arena', { state: { story: topStory } }); }}>
 
-                  {/* Red Tilted Squares Pattern Background */}
-                  <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden rounded-xl opacity-30">
-                    <div className="absolute top-[10%] left-[-5%] flex rotate-[-15deg] origin-left">
-                      <div className="flex gap-12 animate-slide-infinite w-max pr-12">
-                        {[...Array(12)].map((_, i) => (
-                          <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[60px] rounded-bl-[60px] opacity-40 shadow-[0_0_50px_rgba(237,28,36,0.3)]" />
-                        ))}
-                      </div>
-                      <div className="flex gap-12 animate-slide-infinite w-max pr-12">
-                        {[...Array(12)].map((_, i) => (
-                          <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[60px] rounded-bl-[60px] opacity-40 shadow-[0_0_50px_rgba(237,28,36,0.3)]" />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="absolute bottom-[20%] right-[-5%] flex flex-row-reverse rotate-[-15deg] origin-right">
-                      <div className="flex gap-16 animate-slide-infinite-reverse w-max pl-16">
-                        {[...Array(12)].map((_, i) => (
-                          <div key={i} className="w-32 h-32 shrink-0 bg-[#ED1C24] rounded-tl-[40px] rounded-bl-[40px] opacity-20" />
-                        ))}
-                      </div>
-                      <div className="flex gap-16 animate-slide-infinite-reverse w-max pl-16">
-                        {[...Array(12)].map((_, i) => (
-                          <div key={i} className="w-32 h-32 shrink-0 bg-[#ED1C24] rounded-tl-[40px] rounded-bl-[40px] opacity-20" />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
 
                   <div className="absolute inset-0 opacity-10 pointer-events-none z-0">
                     <div className="absolute top-0 left-1/3 w-[1px] h-full bg-white transition-opacity duration-500 group-hover:opacity-50" />
                     <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white transition-opacity duration-500 group-hover:opacity-50" />
+                  </div>
+
+                  {/* Integrated Animated Squares for Hero Background - Two Opposite Rows */}
+                  <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-50">
+                    {/* Row 1: Forward (Right to Left) */}
+                    <div className="absolute top-[8%] left-[-10%] flex rotate-[-10deg] origin-left scale-100">
+                      <div className="flex gap-12 animate-slide-infinite w-max pr-12" style={{ animationDuration: '12s' }}>
+                        {[...Array(8)].map((_, i) => (
+                          <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.5] shadow-[0_0_100px_rgba(237,28,36,0.4)]" />
+                        ))}
+                      </div>
+                      <div className="flex gap-12 animate-slide-infinite w-max pr-12" style={{ animationDuration: '12s' }}>
+                        {[...Array(8)].map((_, i) => (
+                          <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.5] shadow-[0_0_100px_rgba(237,28,36,0.4)]" />
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Row 2: Reverse (Left to Right, Starting Right) */}
+                    <div className="absolute top-[55%] right-[-5%] flex rotate-[-10deg] origin-right scale-100">
+                      <div className="flex gap-16 animate-slide-right-hero w-max" style={{ animationDuration: '14s' }}>
+                        {[...Array(3)].map((_, groupIdx) => (
+                          <div key={groupIdx} className="flex gap-16">
+                            {[...Array(6)].map((_, i) => (
+                              <div key={i} className="w-48 h-48 shrink-0 bg-[#ED1C24] rounded-tl-[80px] rounded-bl-[80px] opacity-[0.4] shadow-[0_0_100px_rgba(237,28,36,0.3)]" />
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex flex-col h-full justify-between z-10 w-full relative">
@@ -375,7 +377,7 @@ export default function HomePage() {
               {featuredStories.length > 0 && (
                 <div className="grid grid-cols-2 gap-3 shrink-0">
                   {featuredStories.map(story => (
-                    <div key={story.id} onClick={() => navigate('/arena')} className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 flex flex-col justify-between group cursor-pointer relative overflow-hidden h-48">
+                    <div key={story.id} onClick={() => navigate('/arena', { state: { story } })} className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 flex flex-col justify-between group cursor-pointer relative overflow-hidden h-48">
                       <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-[#FFD700]/5 blur-[60px] rounded-full group-hover:bg-[#FFD700]/10 transition-all duration-700 pointer-events-none" />
 
                       <div className="flex items-center justify-between z-10 border-b border-white/5 pb-2 mb-3">
@@ -453,21 +455,6 @@ export default function HomePage() {
         }
         .animate-blob {
           animation: blob 15s infinite alternate ease-in-out;
-        }
-        
-        @keyframes slide-infinite {
-          0% { transform: translateX(0%); }
-          100% { transform: translateX(-100%); }
-        }
-        @keyframes slide-infinite-reverse {
-          0% { transform: translateX(0%); }
-          100% { transform: translateX(100%); }
-        }
-        .animate-slide-infinite {
-          animation: slide-infinite 40s linear infinite;
-        }
-        .animate-slide-infinite-reverse {
-          animation: slide-infinite-reverse 45s linear infinite;
         }
         
         @keyframes bg-gradient {

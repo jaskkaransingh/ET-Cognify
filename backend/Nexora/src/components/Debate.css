@@ -1,0 +1,141 @@
+.debate-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  z-index: 5;
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+.debate-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 16px 32px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.debate-title h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.debate-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.language-select {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.language-select option {
+  background: #111;
+  color: #fff;
+}
+
+.topic-input-container {
+  display: flex;
+  gap: 12px;
+}
+
+.topic-input {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1rem;
+  outline: none;
+  width: 300px;
+  transition: border-color 0.3s;
+}
+
+.topic-input:focus {
+  border-color: #64ffda;
+}
+
+.start-btn {
+  background: #64ffda;
+  color: #000;
+  border: none;
+  padding: 8px 24px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s;
+}
+
+.start-btn:hover {
+  background: #fff;
+  transform: translateY(-2px);
+}
+
+.start-btn:disabled {
+  background: #555;
+  color: #999;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.debate-arena {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 60px;
+  flex: 1;
+}
+
+.debate-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.2);
+  font-style: italic;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Background gradient animation for arena */
+.debate-background-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.3;
+  transition: background 1s ease;
+}
+
+.glow-bull {
+  background: radial-gradient(circle at 75% 50%, rgba(100, 255, 218, 0.2) 0%, transparent 50%);
+}
+
+.glow-bear {
+  background: radial-gradient(circle at 25% 50%, rgba(255, 100, 100, 0.2) 0%, transparent 50%);
+}

@@ -1,0 +1,17 @@
+# Backend API URL (Railway deployment)
+#VITE_API_URL=
+
+# Sui Sponsor Wallet Mnemonic
+SPONSOR_MNEMONIC="your-wallet-mnemonic-here"
+
+# Gemini API Key
+VITE_GEMINI_API_KEY=
+
+# LiveKit Configuration
+VITE_LIVEKIT_URL=
+VITE_LIVEKIT_API_KEY=
+VITE_LIVEKIT_API_SECRET=
+
+# ElevenLabs API Key
+VITE_ELEVENLABS_API_KEY=
+VITE_VAPI_PUBLIC_KEY=
