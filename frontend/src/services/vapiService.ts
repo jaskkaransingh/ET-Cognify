@@ -53,14 +53,23 @@ async function ensureVapiCall(language: string = 'English'): Promise<void> {
       // Initialize Vapi SDK
       _vapiInstance = new Vapi(PUBLIC_KEY);
 
-      _vapiInstance.on('call-start', () => { _isCallActive = true; console.log('[VAPI] Call started'); });
+      _vapiInstance.on('call-start', () => { 
+        _isCallActive = true; 
+        console.log('[VAPI] Call started'); 
+        
+        // --- Critical Fix ---
+        // Force Mute the microphone here! This stops the background noise from 
+        // triggering GPT-4o-mini and hallucinating extra chatter!
+        _vapiInstance.setMuted(true);
+      });
       _vapiInstance.on('call-end',   () => { _isCallActive = false; console.log('[VAPI] Call ended'); });
       _vapiInstance.on('error',      (e: any) => { console.error('[VAPI] Error:', e); _isCallActive = false; });
 
       // Dummy assistant that acts entirely as a TTS engine
+      // By using an empty firstMessage, it won't spontaneously greeting us.
       const assistant = {
         name: 'Debate TTS',
-        firstMessage: ' ',
+        firstMessage: '', 
         voice: {
           provider: '11labs',
           voiceId: VAPI_VOICE_IDS.bull, // Default, will override per-turn via parameter
@@ -69,7 +78,11 @@ async function ensureVapiCall(language: string = 'English'): Promise<void> {
         model: {
           provider: 'openai',
           model: 'gpt-4o-mini',
-          messages: [{ role: 'system', content: 'Say exactly what you are told. Nothing else.' }]
+          messages: [{ 
+            role: 'system', 
+            content: 'CRITICAL INSTRUCTION: You are a pure, silent Text-to-Speech proxy. NEVER generate conversational responses. When a user provides text, you must return EXACTLY the same text, verbatim, word-for-word, 100% exactly the same. Do not add intro or outro phrases. Do not summarize.' 
+          }],
+          temperature: 0.0 // Ensure deterministic output
         },
         silenceTimeoutSeconds: 300,
         endCallFunctionEnabled: false
@@ -78,6 +91,11 @@ async function ensureVapiCall(language: string = 'English'): Promise<void> {
       await _vapiInstance.start(assistant);
       await new Promise(r => setTimeout(r, 1200)); // allow WebRTC negotiation to settle out
       
+      // Ensure it is muted post-start as a failsafe
+      if (typeof _vapiInstance.setMuted === 'function') {
+        _vapiInstance.setMuted(true);
+      }
+
       _currentLang = langCode;
       console.log('[VAPI] Ready for TTS. Language:', langCode);
     } catch (err) {
@@ -112,7 +130,7 @@ export class VapiVoiceManager {
     return true;
   }
 
-  async speak(text: string, _voiceId: string, language: string = 'English'): Promise<void> {
+  async speak(text: string, voiceId: string, language: string = 'English'): Promise<void> {
     await ensureVapiCall(language);
 
     if (!_vapiInstance || !_isCallActive) {
@@ -121,22 +139,57 @@ export class VapiVoiceManager {
       return;
     }
 
+    // Force voice override via message update if needed to prevent homogenous voices,
+    // though prompt control via 'add-message' works best.
+
     if (this.onSpeechStart) this.onSpeechStart();
     this.isPlaying = true;
 
-    const onEnd = () => {
+    // A flag to check if we already resolved to prevent double firing
+    let resolved = false;
+
+    const endCheck = () => {
+      if (resolved) return;
+      console.log('[VAPI] Voice playback sequence completed.');
+      resolved = true;
       this.isPlaying = false;
-      if (this.onSpeechEnd) this.onSpeechEnd();
-      _vapiInstance?.removeListener('speech-end', onEnd);
+      if (this.onSpeechEnd) {
+         this.onSpeechEnd();
+         this.onSpeechEnd = null; // Clear to prevent zombie calls
+      }
+      try {
+        _vapiInstance?.removeListener('speech-end', endCheck);
+        _vapiInstance?.removeListener('message', messageListener);
+      } catch (e) {}
+    };
+
+    const messageListener = (msg: any) => {
+      // Often assistant sends a speech update when it stops generating/playing TTS
+      if (msg.type === 'assistant-speech-update' && msg.status === 'stopped') {
+        console.log('[VAPI] Assistant speech explicitly stopped.');
+        setTimeout(endCheck, 200); // slight buffer
+      }
+      if (msg.type === 'transcript' || msg.type === 'conversation-update') {
+        console.log('[VAPI] Transcript log:', msg);
+      }
     };
     
-    _vapiInstance.on('speech-end', onEnd);
-    this._cleanup = () => _vapiInstance?.removeListener('speech-end', onEnd);
+    // Listen to all possible stop events to prevent hanging, but also prevent premature skips
+    _vapiInstance.on('speech-end', endCheck);
+    _vapiInstance.on('message', messageListener);
+    
+    this._cleanup = endCheck;
 
     try {
-      console.log('[VAPI] Emitting TTS:', text.slice(0, 60) + '...');
-      // By passing the voice dynamically, we can switch voices mid-call without restarting WebRTC
-      _vapiInstance.say(text, false, false, false);
+      console.log(`[VAPI] Emitting TTS for: "${text.substring(0, 40)}..."`);
+      
+      _vapiInstance.send({
+        type: "add-message",
+        message: {
+          role: "user",
+          content: `REPEAT THE FOLLOWING TEXT VERBATIM. NO INTRODUCTIONS. NO ADDITIONS. START AND END WITH THE EXACT TEXT: "${text}"`
+        }
+      });
     } catch (err) {
       console.error('[VAPI] TTS attempt failed:', err);
       if (this._cleanup) this._cleanup();
@@ -152,6 +205,5 @@ export class VapiVoiceManager {
 
   dispose(): void {
     this.stop();
-    // Intentionally do NOT destroy WebRTC connection on unmount so it's snappy if the user remounts
   }
 }

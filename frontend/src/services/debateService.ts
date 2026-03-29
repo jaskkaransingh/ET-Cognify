@@ -1,7 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
-
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const BACKEND_URL = 'http://localhost:8000';
 
 const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
   'English': 'You must respond entirely in English.',
@@ -40,7 +37,8 @@ export interface DebateHistoryItem {
 }
 
 /**
- * Generate a response for an agent in the debate using @google/genai (Ported from Nexora)
+ * Generate a response for a debate agent via the backend /api/debate endpoint.
+ * This keeps the Gemini API key server-side and uses a stable model.
  */
 export async function generateDebateResponse(
   agentId: string,
@@ -52,39 +50,28 @@ export async function generateDebateResponse(
   if (!profile) return `(Unknown agent: ${agentId})`;
 
   try {
-    console.log(`[${profile.name}] Generating response natively via Nexora SDK route...`);
-    
-    // Build conversation history matching Nexora format exactly
-    let promptText = `Debate Topic: "${topic}"\n\n`;
-    if (history.length > 0) {
-      promptText += `Previous turns:\n`;
-      history.forEach(msg => {
-        const speakerName = AGENT_PROFILES[msg.agent]?.name || msg.agent;
-        promptText += `${speakerName}: ${msg.text}\n`;
-      });
-      promptText += `\nNow, generate your response as ${profile.name}.`;
-    } else {
-      promptText += `You are starting the debate. Make your opening statement as ${profile.name}.`;
+    console.log(`[${profile.name}] Generating response via backend /api/debate...`);
+
+    const response = await fetch(`${BACKEND_URL}/api/debate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentId,
+        topic,
+        language,
+        history,
+        systemInstruction: profile.systemInstruction(language),
+        agentName: profile.name,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend error: ${response.status} ${response.statusText}`);
     }
 
-    promptText += `\n\nCRITICAL INSTRUCTION: ${getLanguageInstruction(language)}`;
+    const data = await response.json();
+    const text = data.text?.trim() || '';
 
-    const requestConfig = {
-      model: 'gemini-2.5-flash-lite',
-      contents: [{
-        role: 'user',
-        parts: [{ text: promptText }]
-      }],
-      systemInstruction: profile.systemInstruction(language),
-      generationConfig: {
-        temperature: 0.9,
-        maxOutputTokens: 250,
-      }
-    };
-
-    const response = await ai.models.generateContent(requestConfig);
-    const text = response.text?.trim() || '';
-    
     console.log(`[${profile.name}] Generated:`, text.slice(0, 80));
     return text;
   } catch (error) {
