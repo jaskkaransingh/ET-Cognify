@@ -6,7 +6,7 @@ import json
 load_dotenv()
 
 # We use the openai package to access Gemini utilizing their OpenAI API compatible endpoint
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyCeAPXD9O_FAazzVu-9G1O0Zitra5ffVhA")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 LLM_MODEL = "gemini-2.5-flash"
 
 client = OpenAI(
