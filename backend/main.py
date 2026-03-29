@@ -18,7 +18,7 @@ from api.routes import router as rag_router
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("VITE_GEMINI_API_KEY", "AIzaSyCeAPXD9O_FAazzVu-9G1O0Zitra5ffVhA"))
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("VITE_GEMINI_API_KEY", "AIzaSyB3vIv6ILPLCMSGUK-U8K2xx9RJjemXAjE"))
 
 app = FastAPI()
 app.include_router(rag_router, prefix="/api/rag")
@@ -171,7 +171,8 @@ class DebateRequest(BaseModel):
 
 @app.post("/api/debate")
 async def generate_debate(req: DebateRequest):
-    """Generate a single debate turn using Google Gemini."""
+    """Generate a single debate turn using OpenRouter."""
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
     # Build the user prompt
     prompt = f'Debate Topic: "{req.topic}"\n\n'
     if req.history:
@@ -186,18 +187,25 @@ async def generate_debate(req: DebateRequest):
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}",
-                headers={"Content-Type": "application/json"},
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json"
+                },
                 json={
-                    "system_instruction": {"parts": [{"text": req.systemInstruction}]},
-                    "contents": [{"parts": [{"text": prompt}]}],
+                    "model": "google/gemini-2.5-flash",
+                    "max_tokens": 300,
+                    "messages": [
+                        {"role": "system", "content": req.systemInstruction},
+                        {"role": "user", "content": prompt}
+                    ],
                 },
             )
         data = resp.json()
         if resp.status_code != 200:
-            print(f"[Debate] Gemini error: {data}")
+            print(f"[Debate] OpenRouter error: {data}")
             return {"text": f"(Debate engine error: {data.get('error', {}).get('message', 'unknown')})"}
-        text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        text = data["choices"][0]["message"]["content"].strip()
         return {"text": text}
     except Exception as e:
         print(f"[Debate] Exception: {e}")
@@ -217,32 +225,27 @@ async def get_headlines():
             
     # Sort by published date descending
     import time
+    import calendar
     def get_timestamp(item):
         try:
             if hasattr(item, 'published_parsed') and item.published_parsed:
-                return time.mktime(item.published_parsed)
+                return calendar.timegm(item.published_parsed)
             return 0
         except:
             return 0
             
     all_items.sort(key=get_timestamp, reverse=True)
     
-    # Remove duplicates and filter for last 24 hours
-    current_time = time.time()
-    twenty_four_hours_ago = current_time - 24 * 3600
-
     unique_titles = set()
     unique_items = []
     for item in all_items:
         title = item.get("title", "")
-        item_time = get_timestamp(item)
-        
-        # Keep items from last 24 hours. If timestamp is 0 (missing), we can exclude it or include it.
-        # It's safer to include if timeline parsing fell back, but since they want last 24 hours specifically, let's filter correctly.
-        # Actually let's include items within 24 hours OR strictly missing timestamps to be safe, but RSS usually has good timestamps
-        if title not in unique_titles and (item_time >= twenty_four_hours_ago or item_time == 0):
+        # Keep items uniquely, limiting to top 60 to ensure we have content while avoiding massive payload.
+        if title and title not in unique_titles:
             unique_titles.add(title)
             unique_items.append(item)
+            if len(unique_items) >= 60:
+                break
             
     # Format all uniquely merged headlines
     formatted_news = []

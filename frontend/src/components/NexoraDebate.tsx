@@ -21,21 +21,24 @@ export default function NexoraDebate({ topic, initialLanguage = 'English', autoS
 
   const voiceManagerRef = useRef<any>(null);
   const debateInProgressRef = useRef(false);
+  const currentRunIdRef = useRef(0); // Add unique run tracker
   const bearScrollRef = useRef<HTMLDivElement>(null);
   const bullScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => {
       if (voiceManagerRef.current) voiceManagerRef.current.dispose();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      currentRunIdRef.current++; // Invalidate any running loop instantly
       handleStopDebate();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (autoStart && topic) {
       handleStartDebate();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart, topic]);
 
   useEffect(() => {
@@ -52,12 +55,13 @@ export default function NexoraDebate({ topic, initialLanguage = 'English', autoS
     setUserVoted(agent);
   };
 
-  const typewriterReveal = (agent: string, words: string[], durationMs: number) => {
+  const typewriterReveal = (agent: string, words: string[], durationMs: number, myRunId: number) => {
     return new Promise<void>((resolve) => {
       const msPerWord = Math.max(80, durationMs / words.length);
       let idx = 0;
 
       const tick = () => {
+        if (currentRunIdRef.current !== myRunId) { resolve(); return; } // Abort if loop was superseded
         if (idx >= words.length) { resolve(); return; }
         const revealed = words.slice(0, idx + 1).join(' ');
         setTranscripts(prev => {
@@ -72,8 +76,9 @@ export default function NexoraDebate({ topic, initialLanguage = 'English', autoS
     });
   };
 
-  const speakWithVapi = (text: string, voiceId: string, lang: string) => {
+  const speakWithVapi = (text: string, voiceId: string, lang: string, myRunId: number) => {
     return new Promise<void>((resolve) => {
+      if (currentRunIdRef.current !== myRunId) { resolve(); return; }
       if (!voiceManagerRef.current) { resolve(); return; }
       const el = voiceManagerRef.current;
       el.onSpeechEnd = () => resolve();
@@ -84,11 +89,12 @@ export default function NexoraDebate({ topic, initialLanguage = 'English', autoS
     });
   };
 
-  const runDebateLoop = async (currentTopic: string, currentLanguage: string) => {
+  const runDebateLoop = async (currentTopic: string, currentLanguage: string, myRunId: number) => {
     let currentHistory: DebateHistoryItem[] = [];
     const agents = ['bull', 'bear'];
 
     for (let turn = 0; turn < MAX_TURNS; turn++) {
+      if (currentRunIdRef.current !== myRunId) break;
       if (!debateInProgressRef.current) break;
 
       const agent = agents[turn % 2];
@@ -98,6 +104,9 @@ export default function NexoraDebate({ topic, initialLanguage = 'English', autoS
       setTranscripts(prev => ({ ...prev, [agent]: [...prev[agent], 'Thinking...'] }));
 
       const rawText = await generateDebateResponse(agent, currentTopic, currentLanguage, currentHistory);
+      
+      // Post-await checks
+      if (currentRunIdRef.current !== myRunId) break;
       if (!debateInProgressRef.current) break;
 
       const rawWords = rawText.trim().split(/\s+/).filter(Boolean);
@@ -122,20 +131,20 @@ export default function NexoraDebate({ topic, initialLanguage = 'English', autoS
 
       currentHistory.push({ agent, text: finalText });
 
-      if (!debateInProgressRef.current) break;
+      if (currentRunIdRef.current !== myRunId) break;
 
       const cleanTextForAudio = finalText.replace(/\([^)]+\)/g, '').replace(/\[[^\]]+\]/g, '').replace(/\*/g, '').trim();
       const estimatedMs = Math.max(2000, (finalWords.length / 180) * 60000);
 
       await Promise.all([
-        typewriterReveal(agent, finalWords, estimatedMs),
-        speakWithVapi(cleanTextForAudio, voiceId, currentLanguage)
+        typewriterReveal(agent, finalWords, estimatedMs, myRunId),
+        speakWithVapi(cleanTextForAudio, voiceId, currentLanguage, myRunId)
       ]);
 
       await new Promise(r => setTimeout(r, 600));
     }
 
-    if (debateInProgressRef.current) {
+    if (currentRunIdRef.current === myRunId && debateInProgressRef.current) {
       setIsDebating(false);
       setActiveSpeaker(null);
       debateInProgressRef.current = false;
@@ -143,7 +152,14 @@ export default function NexoraDebate({ topic, initialLanguage = 'English', autoS
   };
 
   const handleStartDebate = async () => {
-    if (!topic || isDebating) return;
+    if (!topic || isDebating || debateInProgressRef.current) return;
+
+    currentRunIdRef.current++;
+    const myRunId = currentRunIdRef.current; // Snapshot exact instantiation ID
+
+    debateInProgressRef.current = true;
+    setIsDebating(true);
+    setTranscripts({ bull: [], bear: [] });
 
     if (voiceManagerRef.current) {
       voiceManagerRef.current.dispose();
@@ -156,14 +172,11 @@ export default function NexoraDebate({ topic, initialLanguage = 'English', autoS
       console.error('[Debate] Audio init failed:', err);
     }
 
-    setIsDebating(true);
-    debateInProgressRef.current = true;
-    setTranscripts({ bull: [], bear: [] });
-
-    runDebateLoop(topic, language);
+    runDebateLoop(topic, language, myRunId);
   };
 
   const handleStopDebate = () => {
+    currentRunIdRef.current++; // Kill any active run loops explicitly
     debateInProgressRef.current = false;
     setIsDebating(false);
     setActiveSpeaker(null);
