@@ -1,0 +1,35 @@
+[
+  {
+    "file": "J:\\agents debate\\darwin\\src\\services\\commentatorGeminiService.js",
+    "messages": [
+      "Line 47: '_allChatMessages' is defined but never used.",
+      "Line 97: '_error' is defined but never used.",
+      "Line 117: '_error' is defined but never used.",
+      "Line 136: '_error' is defined but never used."
+    ]
+  },
+  {
+    "file": "J:\\agents debate\\darwin\\src\\services\\geminiService.js",
+    "messages": [
+      "Line 265: '_agentCodes' is defined but never used.",
+      "Line 294: '_otherAgentCodes' is defined but never used.",
+      "Line 320: '_analysis' is defined but never used.",
+      "Line 320: '_allAgentCodes' is defined but never used.",
+      "Line 320: '_chatHistory' is defined but never used.",
+      "Line 334: '_error' is defined but never used.",
+      "Line 339: '_chatHistory' is defined but never used.",
+      "Line 353: '_error' is defined but never used.",
+      "Line 358: '_chatHistory' is defined but never used.",
+      "Line 369: '_error' is defined but never used.",
+      "Line 374: '_ownCode' is defined but never used.",
+      "Line 374: '_otherAgentCodes' is defined but never used.",
+      "Line 374: '_originalPrompt' is defined but never used.",
+      "Line 388: '_error' is defined but never used.",
+      "Line 393: '_allAgentCodes' is defined but never used.",
+      "Line 393: '_chatHistory' is defined but never used.",
+      "Line 407: '_error' is defined but never used.",
+      "Line 412: '_chatHistory' is defined but never used.",
+      "Line 412: '_agentCodes' is defined but never used."
+    ]
+  }
+]
