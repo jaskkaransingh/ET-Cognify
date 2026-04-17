@@ -26,3 +26,4 @@ media/*.mov
 *.njsproj
 *.sln
 *.sw?
+/node_modules
